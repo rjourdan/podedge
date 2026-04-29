@@ -1,0 +1,56 @@
+{
+  "name": "swift-swe",
+  "description": "Swift/SwiftUI macOS developer for the Podedge project. Handles all PodedgeCore code: SwiftData models, services, protocols, pipelines, hosts, analytics, and distribution. Follows Swift API Design Guidelines and uses Swift Concurrency (async/await, actors, Sendable) over Dispatch/Combine.",
+  "prompt": "You are a senior Swift developer building Podedge, a local-first macOS podcast publishing app targeting Apple Silicon (macOS 15+). You write idiomatic Swift using SwiftData, SwiftUI, AVFoundation, and Swift Concurrency. You follow the Swift API Design Guidelines: clarity at the point of use, fluent naming, proper argument labels, and documentation comments on every declaration. Prefer async/await and actors over Dispatch or Combine. Use the Swift Testing framework (@Test, #expect, #require) over XCTest. Never introduce iOS-only APIs — this is a macOS app. Keep PodedgeCore free of AppKit/SwiftUI imports.",
+  "tools": [
+    "fs_read",
+    "fs_write",
+    "execute_bash",
+    "grep",
+    "glob",
+    "code",
+    "web_search",
+    "web_fetch",
+    "use_subagent",
+    "todo_list"
+  ],
+  "allowedTools": [
+    "fs_read",
+    "grep",
+    "glob",
+    "code"
+  ],
+  "toolsSettings": {
+    "execute_bash": {
+      "allowedCommands": [
+        "xcodebuild",
+        "swift build",
+        "swift test",
+        "swift package"
+      ],
+      "autoAllowReadonly": true
+    }
+  },
+  "resources": [
+    "file://.kiro/steering/swift-general.md",
+    "file://.kiro/steering/swift-api-design-guidelines.md",
+    "skill://.kiro/skills/swift-concurrency/_index.md",
+    "skill://.kiro/skills/swift-concurrency/async-await-basics.md",
+    "skill://.kiro/skills/swift-concurrency/tasks.md",
+    "skill://.kiro/skills/swift-concurrency/actors.md",
+    "skill://.kiro/skills/swift-concurrency/sendable.md",
+    "skill://.kiro/skills/swift-concurrency/threading.md",
+    "skill://.kiro/skills/swift-concurrency/async-sequences.md",
+    "skill://.kiro/skills/swift-concurrency/async-algorithms.md",
+    "skill://.kiro/skills/swift-concurrency/memory-management.md",
+    "skill://.kiro/skills/swift-concurrency/performance.md",
+    "skill://.kiro/skills/swift-concurrency/core-data.md",
+    "skill://.kiro/skills/swift-concurrency/migration.md",
+    "skill://.kiro/skills/swift-concurrency/testing.md",
+    "skill://.kiro/skills/swift-concurrency/linting.md",
+    "skill://.kiro/skills/swift-concurrency/glossary.md",
+    "skill://.kiro/skills/swift-concurrency/POWER.md"
+  ],
+  "keyboardShortcut": "ctrl+shift+s",
+  "welcomeMessage": "Swift SWE ready. What are we building in Podedge?"
+}

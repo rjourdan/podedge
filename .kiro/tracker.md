@@ -6,11 +6,11 @@ Generated: 2026-04-27
 
 | Agent | Role | Work Streams |
 |---|---|---|
-| `backend-swe` | Primary implementer — services, models, protocols, pipelines | WS1–WS6 |
+| `swift-swe` | Primary implementer — services, models, protocols, pipelines | WS1–WS6 |
 | `kiro_default` | UI layer, project setup, integration, prompts | WS1, WS7, WS8 |
 | `code-review-agent` | Review after each work stream completes | All |
 
-> **Note:** This is a Swift/SwiftUI macOS project. `backend-swe` handles all
+> **Note:** This is a Swift/SwiftUI macOS project. `swift-swe` handles all
 > non-UI PodedgeCore code (models, services, protocols, hosts, analytics,
 > distribution). `kiro_default` handles Xcode project setup, SwiftUI views,
 > onboarding, and integration. `code-review-agent` reviews completed streams.
@@ -65,7 +65,7 @@ WS1 (Foundation) ──► WS2 (Domain + Action Layer) ──► WS3 (Protocols 
 
 ## WS2: Domain Model & Action Layer
 
-**Agent:** `backend-swe`
+**Agent:** `swift-swe`
 **Depends on:** WS1
 **Unlocks:** WS3
 
@@ -86,7 +86,7 @@ WS1 (Foundation) ──► WS2 (Domain + Action Layer) ──► WS3 (Protocols 
 
 ## WS3: Extension Points & Infrastructure
 
-**Agent:** `backend-swe`
+**Agent:** `swift-swe`
 **Depends on:** WS2
 **Unlocks:** WS4, WS5, WS6 (in parallel)
 
@@ -108,7 +108,7 @@ WS1 (Foundation) ──► WS2 (Domain + Action Layer) ──► WS3 (Protocols 
 
 ## WS4: Audio Ingest Pipeline
 
-**Agent:** `backend-swe`
+**Agent:** `swift-swe`
 **Depends on:** WS3
 **Parallel with:** WS5, WS6
 
@@ -125,7 +125,7 @@ WS1 (Foundation) ──► WS2 (Domain + Action Layer) ──► WS3 (Protocols 
 
 ## WS5: Local AI (Transcription + LLM)
 
-**Agent:** `backend-swe`
+**Agent:** `swift-swe`
 **Depends on:** WS3
 **Parallel with:** WS4, WS6
 
@@ -143,7 +143,7 @@ WS1 (Foundation) ──► WS2 (Domain + Action Layer) ──► WS3 (Protocols 
 
 ## WS6: Hosting, Feed, Analytics & Distribution
 
-**Agent:** `backend-swe`
+**Agent:** `swift-swe`
 **Depends on:** WS3
 **Parallel with:** WS4, WS5
 
@@ -171,7 +171,7 @@ WS1 (Foundation) ──► WS2 (Domain + Action Layer) ──► WS3 (Protocols 
 
 ## WS7: Publish Pipeline & Promotion
 
-**Agent:** `backend-swe`
+**Agent:** `swift-swe`
 **Depends on:** WS4, WS5, WS6 (all three must complete)
 **Unlocks:** WS8
 
@@ -214,7 +214,7 @@ WS1 (Foundation) ──► WS2 (Domain + Action Layer) ──► WS3 (Protocols 
 
 ## WS9: v1.1 — Assistant & BYO-AI Providers
 
-**Agent:** `backend-swe` (providers, router, agents, services) + `kiro_default` (UI)
+**Agent:** `swift-swe` (providers, router, agents, services) + `kiro_default` (UI)
 **Depends on:** WS8 (v1 complete)
 
 ### 9A: BYO-AI Provider Implementations (15.F)
