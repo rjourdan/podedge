@@ -52,5 +52,6 @@
     "skill://.kiro/skills/swift-concurrency/POWER.md"
   ],
   "keyboardShortcut": "ctrl+shift+s",
-  "welcomeMessage": "Swift SWE ready. What are we building in Podedge?"
+  "welcomeMessage": "Swift SWE ready. What are we building in Podedge?",
+  "model":"claude-opus-4.6"
 }
