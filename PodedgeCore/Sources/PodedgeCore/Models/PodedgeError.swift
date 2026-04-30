@@ -10,6 +10,10 @@ public enum PodedgeError: LocalizedError, Sendable {
     case hostUnreachable(reason: String)
     case notFound(entity: String, id: String)
     case preconditionViolated(reason: String)
+    case transcriptionFailed(reason: String)
+    case llmFailed(reason: String)
+    case distributionFailed(target: String, reason: String)
+    case analyticsUnavailable(reason: String)
 
     public var errorDescription: String? {
         switch self {
@@ -21,6 +25,10 @@ public enum PodedgeError: LocalizedError, Sendable {
         case .hostUnreachable(let reason): "Host unreachable: \(reason)"
         case .notFound(let entity, let id): "\(entity) not found: \(id)"
         case .preconditionViolated(let reason): "Precondition violated: \(reason)"
+        case .transcriptionFailed(let reason): "Transcription failed: \(reason)"
+        case .llmFailed(let reason): "LLM failed: \(reason)"
+        case .distributionFailed(let target, let reason): "Distribution to \(target) failed: \(reason)"
+        case .analyticsUnavailable(let reason): "Analytics unavailable: \(reason)"
         }
     }
 }

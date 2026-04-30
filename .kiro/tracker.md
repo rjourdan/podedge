@@ -1,7 +1,7 @@
 # Podedge Implementation Tracker
 
 Generated: 2026-04-27
-Last updated: 2026-04-29
+Last updated: 2026-04-30
 
 ## Agent Assignments
 
@@ -69,12 +69,12 @@ WS1 (Foundation) ──► WS2 (Domain + Action Layer) ──► WS3 (Protocols 
 
 ---
 
-## WS2: Domain Model & Action Layer 🔶 (Phase 2 done, Phase 2.5 pending)
+## WS2: Domain Model & Action Layer ✅
 
 **Agent:** `swift-swe` (assigned) — Phase 2 was done by `kiro_default` directly
 **Depends on:** WS1
 **Unlocks:** WS3
-**Status:** Phase 2 (models + LibraryStore) complete (2026-04-29). Phase 2.5 (Action Layer) pending.
+**Status:** Complete (2026-04-30). Phase 2 (models + LibraryStore) + Phase 2.5 (Action Layer) done.
 
 | ID | Phase | Task | Description | Status |
 |---|---|---|---|---|
@@ -82,12 +82,12 @@ WS1 (Foundation) ──► WS2 (Domain + Action Layer) ──► WS3 (Protocols 
 | 2.2 | 2 | Define Enums & Value Types | EpisodeStatus, EpisodeType, JobKind, JobState, HostKind, etc. | ✅ |
 | 2.3 | 2 | LibraryStore Facade | Typed CRUD wrappers around ModelContext, observable collections | ✅ |
 | 2.4 | 2 | LibraryStore Tests | Unit tests for CRUD operations | ✅ 11 pure model tests pass via `swift test`; SwiftData integration tests compile but need Xcode runner |
-| 2.5.1 | 2.5 | Define Tool & ToolBroker | Tool<Input,Output>, ToolScope, CapabilityTier, ToolCaller, broker | ⬜ |
-| 2.5.2 | 2.5 | AuditLog Service | @Model AgentAuditEntry, redaction, 90-day retention | ⬜ |
-| 2.5.3 | 2.5 | Destructive-Action Confirmation Sheet | ConfirmationSheetView + ConfirmationCoordinator | ⬜ |
-| 2.5.4 | 2.5 | Tool Registry | Central registration point, broker reads from registry | ⬜ |
-| 2.5.5 | 2.5 | ToolButton SwiftUI Helper | Wraps tool invocation, loading/error states | ⬜ |
-| 2.5.6 | 2.5 | Tool & Broker Tests | Scope enforcement, confirmation flow, audit entries | ⬜ |
+| 2.5.1 | 2.5 | Define Tool & ToolBroker | ToolDefinition protocol, ToolScope, CapabilityTier, ToolCaller, ToolBroker actor, ToolResult | ✅ |
+| 2.5.2 | 2.5 | AuditLog Service | @Model AgentAuditEntry, AuditLogService with redaction + 90-day retention | ✅ |
+| 2.5.3 | 2.5 | Destructive-Action Confirmation Sheet | ConfirmationSheetView + ConfirmationCoordinator | ⬜ deferred — SwiftUI, handled by `kiro_default` in WS8 |
+| 2.5.4 | 2.5 | Tool Registry | Actor-based ToolRegistry with register/unregister/lookup/filter | ✅ |
+| 2.5.5 | 2.5 | ToolButton SwiftUI Helper | Wraps tool invocation, loading/error states | ⬜ deferred — SwiftUI, handled by `kiro_default` in WS8 |
+| 2.5.6 | 2.5 | Tool & Broker Tests | 14 new tests: scope ordering, tier gating, broker confirmation, registry CRUD, redaction, audit log | ✅ |
 
 > **Known issue:** SwiftData `ModelContainer` crashes in the bare SPM test
 > runner (signal 5). SwiftData integration tests are tagged `.swiftData` and
@@ -95,25 +95,33 @@ WS1 (Foundation) ──► WS2 (Domain + Action Layer) ──► WS3 (Protocols 
 
 ---
 
-## WS3: Extension Points & Infrastructure
+## WS3: Extension Points & Infrastructure ✅
 
 **Agent:** `swift-swe`
 **Depends on:** WS2
 **Unlocks:** WS4, WS5, WS6 (in parallel)
+**Status:** Complete (2026-04-30). All 7 protocols + 4 infra services built. 64 tests pass via `xcodebuild test`. Import check ✅.
 
 | ID | Phase | Task | Description | Status |
 |---|---|---|---|---|
-| 3.1 | 3 | AudioPipeline Protocol + PassthroughPipeline | sha256, probe, waveform, ID3 read, optional rewrite | ⬜ |
-| 3.2 | 3 | PodcastHost Protocol | put, delete, publicURL, head | ⬜ |
-| 3.3 | 3 | TranscriptionEngine Protocol | Vendor/adapt from wispr | ⬜ |
-| 3.4 | 3 | LLMProvider Protocol | complete, stream, schema-constrained output | ⬜ |
-| 3.5 | 3 | DistributionTarget Protocol | submit, refreshStatus, mode (.api/.guided) | ⬜ |
-| 3.6 | 3 | PromotionRenderer Protocol | Generic render interface | ⬜ |
-| 3.7 | 3 | AnalyticsProvider Protocol | register, prefix, fetchSnapshot | ⬜ |
-| 4.1 | 4 | Logger with Redaction | Pattern-match and redact credentials from logs | ⬜ |
-| 4.2 | 4 | KeychainService | Typed accessors for S3, OP3, PodcastIndex credentials | ⬜ |
-| 4.3 | 4 | JobScheduler | Durable queue, dependencies, retries, backoff, resume on launch | ⬜ |
-| 4.4 | 4 | JobScheduler Tests | Queue behavior, retry logic, dependency ordering | ⬜ |
+| 3.1 | 3 | AudioPipeline Protocol + PassthroughPipeline | sha256, probe, waveform, ID3 read, optional rewrite | ✅ |
+| 3.2 | 3 | PodcastHost Protocol | put, delete, publicURL, head | ✅ |
+| 3.3 | 3 | TranscriptionEngine Protocol | Vendor/adapt from wispr | ✅ |
+| 3.4 | 3 | LLMProvider Protocol | complete, stream, schema-constrained output | ✅ |
+| 3.5 | 3 | DistributionTarget Protocol | submit, refreshStatus, mode (.api/.guided) | ✅ |
+| 3.6 | 3 | PromotionRenderer Protocol | Generic render interface | ✅ |
+| 3.7 | 3 | AnalyticsProvider Protocol | register, prefix, fetchSnapshot | ✅ |
+| 4.1 | 4 | Logger with Redaction | Pattern-match and redact credentials from logs | ✅ |
+| 4.2 | 4 | KeychainService | Typed accessors for S3, OP3, PodcastIndex credentials | ✅ |
+| 4.3 | 4 | JobScheduler | Durable queue, dependencies, retries, backoff, resume on launch | ✅ |
+| 4.4 | 4 | JobScheduler Tests | Queue behavior, retry logic, dependency ordering | ✅ |
+
+> **Fixes applied during testing:**
+> - SwiftData `ModelContainer` crash: tests now share a single file-backed container
+>   with per-test cleanup (`TestDatabase.reset()`) instead of creating multiple in-memory containers.
+> - SwiftData `#Predicate` enum limitation: `pendingJobs()` and `JobScheduler.pickAndRun()`
+>   now fetch-then-filter in memory instead of using `#Predicate` with captured enum values,
+>   which crashes in the Xcode test runner.
 
 ---
 
@@ -316,3 +324,16 @@ Deferred:    WS10                 (future)
 | 2026-04-29 | Applied all 16 fixes: Asset.localURL, AnalyticsSnapshot relationships, doc comments throughout, PodedgeSchema namespace, summary rename, Show.updatedAt, missing CRUD methods, new tests. Build ✅, 13 pure model tests ✅, import check ✅. | `swift-swe` (fix) |
 
 **Next up:** WS2 Phase 2.5 (Action Layer — Tool & ToolBroker) → then WS3 (protocols + infra). Delegate to `swift-swe`.
+
+| 2026-04-30 | WS2 Phase 2.5: Built Action Layer — ToolScope, CapabilityTier, ToolDefinition protocol, ToolCaller protocol, ToolResult enum, ToolBroker actor, ToolRegistry actor, AgentAuditEntry @Model, AuditLogService with redaction + 90-day retention. 7 source files, 2 test files. Build ✅, 43 tests pass (29 existing + 14 new). Import check ✅. Tasks 2.5.3/2.5.5 deferred to WS8 (SwiftUI). | `swift-swe` |
+
+**Next up:** WS3 (Extension Points & Infrastructure — protocols + infra services). Delegate to `swift-swe`.
+
+| 2026-04-30 | WS3: Built all 11 tasks — 7 extension point protocols (AudioPipeline + PassthroughPipeline, PodcastHost, TranscriptionEngine, LLMProvider, DistributionTarget, PromotionRenderer, AnalyticsProvider) + 4 infra services (PodedgeLogger, KeychainService, JobScheduler, JobScheduler tests). 11 new source files, 1 new test file, 1 test support file. Fixed SwiftData test infrastructure: shared single container with per-test cleanup (no more signal trap crashes), in-memory enum filtering for `#Predicate` compatibility. `xcodebuild test` ✅ — 64/64 tests pass. Import check ✅. | `swift-swe` (delegated) + `kiro_default` (test fixes) |
+
+**Next up:** WS3 review by `code-review-agent`, then WS4 ║ WS5 ║ WS6 in parallel.
+
+| 2026-04-30 | WS3 review: `code-review-agent` found 2 🔴 must-fix, 8 🟡 should-fix, 4 🟢 nice-to-have. Key issues: ToolResult.failure(Error) not Sendable, @Model types in protocol signatures, missing PodedgeError cases, JobScheduler no max retry/backoff/logging, no KeychainService/PassthroughPipeline tests, no start() integration test, AWS redaction gap, AnalyticsSnapshotData naming. | `code-review-agent` |
+| 2026-04-30 | Applied all review fixes (2 🔴 + 8 🟡 + 1 🟢): ToolResult.failure(String), ShowSnapshot/EpisodeSnapshot value types, 4 new PodedgeError cases, JobScheduler maxAttempts + backoff + logging, KeychainServiceTests (6), AudioPipelineTests (6), start() + maxAttempts tests, AWS redaction patterns, AnalyticsFetchResult rename, ToolBroker resolveTool helper. `xcodebuild test` ✅ — 81/81 tests pass. Import check ✅. Decisions logged in `.kiro/learnings/ws3-review-decisions.md`. | `swift-swe` (delegated) |
+
+**Next up:** WS4 ║ WS5 ║ WS6 in parallel. All review conditions met — proceed.

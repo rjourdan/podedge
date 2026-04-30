@@ -131,8 +131,8 @@ struct DomainModelTests {
 struct LibraryStoreTests {
 
     private func makeStore() throws -> LibraryStore {
-        let container = try PodedgeSchema.makeContainer(inMemory: true)
-        return LibraryStore(modelContext: container.mainContext)
+        try TestDatabase.reset()
+        return LibraryStore(modelContext: TestDatabase.shared.mainContext)
     }
 
     // MARK: - Shows

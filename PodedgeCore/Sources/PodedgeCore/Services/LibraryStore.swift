@@ -135,14 +135,13 @@ public final class LibraryStore {
 
     /// Returns all jobs in the pending state, sorted oldest-first by creation date.
     public func pendingJobs() throws -> [Job] {
-        // SwiftData #Predicate requires enum values captured in local bindings.
-        let pending = JobState.pending
-        return try modelContext.fetch(
-            FetchDescriptor<Job>(
-                predicate: #Predicate { $0.state == pending },
-                sortBy: [SortDescriptor(\.createdAt)]
-            )
+        // Fetch all jobs sorted by creation date, then filter in memory.
+        // SwiftData's #Predicate does not reliably support captured enum
+        // constants across all runners (SPM vs Xcode).
+        let all = try modelContext.fetch(
+            FetchDescriptor<Job>(sortBy: [SortDescriptor(\.createdAt)])
         )
+        return all.filter { $0.state == .pending }
     }
 
     /// Returns all jobs targeting the given entity, sorted newest-first by creation date.
