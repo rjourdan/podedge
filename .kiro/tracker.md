@@ -130,15 +130,29 @@ WS1 (Foundation) ──► WS2 (Domain + Action Layer) ──► WS3 (Protocols 
 **Agent:** `swift-swe`
 **Depends on:** WS3
 **Parallel with:** WS5, WS6
+**Status:** Complete (2026-04-30). All 6 tasks built + reviewed + fixes applied. 98 tests pass via `xcodebuild test`. Import check ✅.
 
 | ID | Phase | Task | Description | Status |
 |---|---|---|---|---|
-| 5.1 | 5 | MP3 Validator | MPEG frame sanity, MIME sniff, reject non-MP3 | ⬜ |
-| 5.2 | 5 | Audio Prober | AVFoundation: duration (frame scan), bitrate, channels, LUFS | ⬜ |
-| 5.3 | 5 | Waveform Generator | 1000-sample peak array, stored as .wfm binary | ⬜ |
-| 5.4 | 5 | ID3 Tag Reader/Writer | Read/write title, artist, album, cover (APIC), chapters (CHAP/CTOC) | ⬜ |
-| 5.5 | 5 | IngestService | Orchestrate: copy → validate → hash → probe → waveform → ID3 → enqueue jobs | ⬜ |
-| 5.6 | 5 | IngestService Tests | Fixture MP3s: short/long, mono/stereo, tagged/untagged, corrupted | ⬜ |
+| 5.1 | 5 | MP3 Validator | MPEG frame sanity, MIME sniff, reject non-MP3 | ✅ |
+| 5.2 | 5 | Audio Prober | AVFoundation: duration (frame scan), bitrate, channels, LUFS | ✅ |
+| 5.3 | 5 | Waveform Generator | 1000-sample peak array, stored as .wfm binary | ✅ |
+| 5.4 | 5 | ID3 Tag Reader/Writer | Read/write title, artist, album, cover (APIC), chapters (CHAP/CTOC) | ✅ |
+| 5.5 | 5 | IngestService | Orchestrate: copy → validate → hash → probe → waveform → ID3 → enqueue jobs | ✅ |
+| 5.6 | 5 | IngestService Tests | Fixture MP3s: short/long, mono/stereo, tagged/untagged, corrupted | ✅ |
+
+> **Review fixes applied:**
+> - MP3Validator: Now seeks past ID3 tag to verify MPEG sync word (rejects ID3-only files).
+> - ID3TagService: Bumped to ID3v2.4 with synchsafe frame sizes and UTF-8 encoding byte.
+> - ID3TagService: Cover art MIME auto-detected (JPEG/PNG), 2 MB size guard added.
+> - IngestService: Failed ingests delete the episode (no orphaned records).
+> - IngestService: Waveform asset SHA-256 computed via CryptoKit (was empty string).
+> - IngestService: Extracted magic number to `defaultWaveformSampleCount` constant.
+> - WaveformGenerator: Streaming approach — never loads all samples into memory.
+> - WaveformGenerator: All methods now static for consistency.
+> - MockAudioPipeline: `@unchecked Sendable` removed, error types constrained to `Sendable`.
+> - Deprecated `url.path` replaced with `url.path(percentEncoded: false)` throughout.
+> - Added doc `SeeAlso` links in IngestService.
 
 ---
 
@@ -337,3 +351,9 @@ Deferred:    WS10                 (future)
 | 2026-04-30 | Applied all review fixes (2 🔴 + 8 🟡 + 1 🟢): ToolResult.failure(String), ShowSnapshot/EpisodeSnapshot value types, 4 new PodedgeError cases, JobScheduler maxAttempts + backoff + logging, KeychainServiceTests (6), AudioPipelineTests (6), start() + maxAttempts tests, AWS redaction patterns, AnalyticsFetchResult rename, ToolBroker resolveTool helper. `xcodebuild test` ✅ — 81/81 tests pass. Import check ✅. Decisions logged in `.kiro/learnings/ws3-review-decisions.md`. | `swift-swe` (delegated) |
 
 **Next up:** WS4 ║ WS5 ║ WS6 in parallel. All review conditions met — proceed.
+
+| 2026-04-30 | WS4: Built all 6 tasks — MP3Validator (magic bytes + MPEG sync scan), AudioProber (AVFoundation), WaveformGenerator (streaming PCM peak bucketing), ID3TagService (AVFoundation read + ID3v2.4 write), IngestService (full pipeline orchestrator), IngestServiceTests (MockAudioPipeline + 14 tests). 5 new source files, 1 new test file. `xcodebuild test` ✅ — 94/94 tests pass. Import check ✅. | `swift-swe` (delegated) |
+| 2026-04-30 | WS4 review: `code-review-agent` found 3 🔴 must-fix, 7 🟡 should-fix, 5 🟢 nice-to-have. Key issues: MP3Validator accepts ID3-only files, ID3TagService v2.3/v2.4 encoding mismatch, orphaned episodes on failure, WaveformGenerator loads entire file into memory, empty waveform SHA-256, test coverage gaps. | `code-review-agent` |
+| 2026-04-30 | Applied all review fixes (3 🔴 + 6 🟡 + 3 🟢): MP3Validator seeks past ID3 tag, ID3TagService bumped to v2.4 with synchsafe frames, failed ingests delete episode, WaveformGenerator streaming, waveform SHA-256 via CryptoKit, cover art size guard + MIME detection, static WaveformGenerator methods, `@unchecked Sendable` removed, deprecated `url.path` replaced, magic number extracted, SeeAlso doc links. 4 new tests (ID3 round-trip, waveform failure cleanup, ID3 failure cleanup, ID3-only rejection). `xcodebuild test` ✅ — 98/98 tests pass. Import check ✅. | `swift-swe` (delegated) |
+
+**Next up:** WS5 ║ WS6 in parallel. WS4 review conditions met — proceed.
