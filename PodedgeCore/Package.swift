@@ -17,7 +17,8 @@ let package = Package(
         .testTarget(
             name: "PodedgeCoreTests",
             dependencies: ["PodedgeCore"],
-            path: "Tests/PodedgeCoreTests"
+            path: "Tests/PodedgeCoreTests",
+            exclude: ["Fixtures"]
         ),
     ]
 )

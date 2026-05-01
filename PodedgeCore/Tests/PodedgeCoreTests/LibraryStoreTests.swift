@@ -95,6 +95,35 @@ struct DomainModelTests {
         #expect(binding.bucket == "podcast-bucket")
     }
 
+    @Test("Episode snapshot populates enclosureByteSize from resolved asset")
+    func episodeSnapshotEnclosureByteSize() {
+        let assetID = UUID()
+        let asset = Asset(
+            id: assetID, kind: .audioPublished,
+            localURL: URL(filePath: "/tmp/pub.mp3"),
+            sha256: "deadbeef", byteSize: 98_765_432,
+            contentType: "audio/mpeg"
+        )
+        let ep = Episode(
+            title: "With Asset",
+            originalAssetID: UUID(),
+            publishedAssetID: assetID
+        )
+
+        let snap = ep.snapshot(resolvingAsset: { id in id == assetID ? asset : nil })
+        #expect(snap.enclosureByteSize == 98_765_432)
+    }
+
+    @Test("Episode snapshot defaults enclosureByteSize to zero without resolver")
+    func episodeSnapshotEnclosureByteSizeDefault() {
+        let ep = Episode(
+            title: "No Asset",
+            originalAssetID: UUID(),
+            publishedAssetID: UUID()
+        )
+        #expect(ep.snapshot.enclosureByteSize == 0)
+    }
+
     @Test("PodedgeError provides localized descriptions")
     func errorDescriptions() {
         let error = PodedgeError.invalidMP3(reason: "not MPEG")

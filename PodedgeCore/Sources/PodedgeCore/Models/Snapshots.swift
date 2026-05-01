@@ -104,6 +104,10 @@ public struct EpisodeSnapshot: Sendable {
     public var originalAssetID: UUID
     public var publishedAssetID: UUID?
     public var coverArtAssetID: UUID?
+    /// Byte size of the published enclosure file. Used for `<enclosure length="...">`.
+    public var enclosureByteSize: Int64
+    /// URL to a VTT transcript file, if available.
+    public var transcriptURL: URL?
 
     public init(
         id: UUID,
@@ -121,7 +125,9 @@ public struct EpisodeSnapshot: Sendable {
         chaptersJSON: String? = nil,
         originalAssetID: UUID,
         publishedAssetID: UUID? = nil,
-        coverArtAssetID: UUID? = nil
+        coverArtAssetID: UUID? = nil,
+        enclosureByteSize: Int64 = 0,
+        transcriptURL: URL? = nil
     ) {
         self.id = id
         self.title = title
@@ -139,6 +145,8 @@ public struct EpisodeSnapshot: Sendable {
         self.originalAssetID = originalAssetID
         self.publishedAssetID = publishedAssetID
         self.coverArtAssetID = coverArtAssetID
+        self.enclosureByteSize = enclosureByteSize
+        self.transcriptURL = transcriptURL
     }
 }
 
@@ -146,8 +154,29 @@ public struct EpisodeSnapshot: Sendable {
 
 extension Episode {
     /// Creates a `Sendable` snapshot of this episode's current state.
+    ///
+    /// `enclosureByteSize` defaults to `0` because `Episode` stores only a
+    /// `publishedAssetID` (no relationship to `Asset`). Use
+    /// ``snapshot(resolvingAsset:)`` when you need the byte size populated
+    /// (e.g. for RSS feed generation).
     public var snapshot: EpisodeSnapshot {
-        EpisodeSnapshot(
+        snapshot(resolvingAsset: { _ in nil })
+    }
+
+    /// Creates a snapshot, resolving the published asset to populate `enclosureByteSize`.
+    ///
+    /// - Parameter resolvingAsset: Closure that looks up an ``Asset`` by its ID.
+    ///   Typically backed by a `ModelContext` fetch. Pass `{ _ in nil }` when the
+    ///   byte size is not needed.
+    /// - Returns: A fully populated ``EpisodeSnapshot``.
+    public func snapshot(resolvingAsset: (UUID) -> Asset?) -> EpisodeSnapshot {
+        // Option B: Episode has no Asset relationship, so the caller provides
+        // a resolver. FeedBuilder already uses a similar AssetResolver pattern.
+        let byteSize: Int64 = publishedAssetID
+            .flatMap(resolvingAsset)
+            .map(\.byteSize) ?? 0
+
+        return EpisodeSnapshot(
             id: id,
             title: title,
             subtitle: subtitle,
@@ -163,7 +192,58 @@ extension Episode {
             chaptersJSON: chaptersJSON,
             originalAssetID: originalAssetID,
             publishedAssetID: publishedAssetID,
-            coverArtAssetID: coverArtAssetID
+            coverArtAssetID: coverArtAssetID,
+            enclosureByteSize: byteSize
+        )
+    }
+}
+
+/// A `Sendable` value-type snapshot of a ``HostBinding`` for use across isolation boundaries.
+public struct HostBindingSnapshot: Sendable {
+    public var id: UUID
+    public var kind: HostKind
+    public var displayName: String
+    public var bucket: String
+    public var region: String
+    public var prefix: String
+    public var publicBaseURL: URL
+    public var keychainRef: String
+
+    public init(
+        id: UUID,
+        kind: HostKind,
+        displayName: String,
+        bucket: String,
+        region: String,
+        prefix: String,
+        publicBaseURL: URL,
+        keychainRef: String
+    ) {
+        self.id = id
+        self.kind = kind
+        self.displayName = displayName
+        self.bucket = bucket
+        self.region = region
+        self.prefix = prefix
+        self.publicBaseURL = publicBaseURL
+        self.keychainRef = keychainRef
+    }
+}
+
+// MARK: - HostBinding Convenience
+
+extension HostBinding {
+    /// Creates a `Sendable` snapshot of this host binding's current state.
+    public var snapshot: HostBindingSnapshot {
+        HostBindingSnapshot(
+            id: id,
+            kind: kind,
+            displayName: displayName,
+            bucket: bucket,
+            region: region,
+            prefix: prefix,
+            publicBaseURL: publicBaseURL,
+            keychainRef: keychainRef
         )
     }
 }

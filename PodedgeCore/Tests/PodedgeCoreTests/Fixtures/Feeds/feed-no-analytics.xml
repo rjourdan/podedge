@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:podcast="https://podcastindex.org/namespace/1.0">
+    <channel>
+        <title>Test Podcast</title>
+        <link>https://cdn.example.com/shows/test/feed.xml</link>
+        <description>A test podcast about testing.</description>
+        <language>en-US</language>
+        <copyright>© 2026 Test Author</copyright>
+        <atom:link href="https://cdn.example.com/shows/test/feed.xml" rel="self" type="application/rss+xml"></atom:link>
+        <itunes:author>Test Author</itunes:author>
+        <itunes:explicit>false</itunes:explicit>
+        <itunes:summary>A test podcast about testing.</itunes:summary>
+        <itunes:owner>
+            <itunes:name>Test Author</itunes:name>
+            <itunes:email>test@example.com</itunes:email>
+        </itunes:owner>
+        <itunes:category text="Technology">
+            <itunes:category text="Software How-To"></itunes:category>
+        </itunes:category>
+        <itunes:image href="https://cdn.example.com/art/cover.jpg"></itunes:image>
+        <podcast:guid>22222222-2222-2222-2222-222222222222</podcast:guid>
+        <podcast:locked owner="test@example.com">yes</podcast:locked>
+        <item>
+            <title>First Episode</title>
+            <guid isPermaLink="false">AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA</guid>
+            <description>Summary of the first episode.</description>
+            <pubDate>Tue, 14 Nov 2023 22:13:20 +0000</pubDate>
+            <content:encoded>&lt;p&gt;First episode description.&lt;/p&gt;</content:encoded>
+            <enclosure url="https://cdn.example.com/audio/ep1.mp3" length="1048576" type="audio/mpeg"></enclosure>
+            <itunes:episodeType>full</itunes:episodeType>
+            <itunes:season>1</itunes:season>
+            <itunes:episode>1</itunes:episode>
+            <itunes:explicit>false</itunes:explicit>
+            <itunes:subtitle>The beginning</itunes:subtitle>
+        </item>
+        <item>
+            <title>Second Episode</title>
+            <guid isPermaLink="false">BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB</guid>
+            <description>Summary of the second episode.</description>
+            <pubDate>Thu, 16 Nov 2023 02:00:00 +0000</pubDate>
+            <content:encoded>&lt;p&gt;Second episode description.&lt;/p&gt;</content:encoded>
+            <enclosure url="https://cdn.example.com/audio/ep2.mp3" length="2097152" type="audio/mpeg"></enclosure>
+            <itunes:episodeType>full</itunes:episodeType>
+            <itunes:season>1</itunes:season>
+            <itunes:episode>2</itunes:episode>
+            <itunes:subtitle>Continuing</itunes:subtitle>
+            <itunes:image href="https://cdn.example.com/art/ep2-cover.jpg"></itunes:image>
+        </item>
+    </channel>
+</rss>

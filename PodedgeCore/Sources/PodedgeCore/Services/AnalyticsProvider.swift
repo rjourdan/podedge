@@ -35,9 +35,11 @@ public protocol AnalyticsProvider: Sendable {
 
     /// Registers a feed URL with the analytics provider.
     ///
-    /// - Parameter feedURL: The public URL of the show's RSS feed.
+    /// - Parameters:
+    ///   - feedURL: The public URL of the show's RSS feed.
+    ///   - podcastGUID: The Podcasting 2.0 GUID for the show.
     /// - Returns: The external show identifier assigned by the provider.
-    func register(feedURL: URL) async throws -> String
+    func register(feedURL: URL, podcastGUID: UUID) async throws -> String
 
     /// Wraps an enclosure URL with the provider's analytics prefix.
     ///
