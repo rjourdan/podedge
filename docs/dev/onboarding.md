@@ -7,6 +7,7 @@
 Changelog
 - 2026-05-01: Initial draft. Reflects PodedgeCore state only; the app target has not yet landed in the repo.
 - 2026-05-01: Confirmed OvercastTarget stub as first-change task — guided targets are ~32-line copy-paste-adapt pattern with matching ~10-line tests (verified in Distribution/ and DistributionServiceTests.swift).
+- 2026-05-01: WS7 complete. PublishService, PublishArtifactBuilder, PublishDryRun, and SocialBlurbRenderer now exist in PodedgeCore.
 -->
 
 ## What Podedge is (in one paragraph)
@@ -68,8 +69,8 @@ Read these in order. You'll have a working mental model after ~30 minutes.
 1. **[`PodedgeCore/Sources/PodedgeCore/Services/ToolBroker.swift`](../../PodedgeCore/Sources/PodedgeCore/Services/ToolBroker.swift)** — every user-facing action routes through here. If you understand `ToolBroker`, you understand how the UI and the future assistant both drive the system.
 2. **[`PodedgeCore/Sources/PodedgeCore/Services/LibraryStore.swift`](../../PodedgeCore/Sources/PodedgeCore/Services/LibraryStore.swift)** — the single SwiftData facade. All persistence goes through it.
 3. **[`PodedgeCore/Sources/PodedgeCore/Services/JobScheduler.swift`](../../PodedgeCore/Sources/PodedgeCore/Services/JobScheduler.swift)** — durable job queue. Ingest, transcription, publish, and analytics refresh all flow through it.
-4. **[`PodedgeCore/Sources/PodedgeCore/Services/PodcastHost.swift`](../../PodedgeCore/Sources/PodedgeCore/Services/PodcastHost.swift)** and the sibling protocol files (`LLMProvider.swift`, `TranscriptionEngine.swift`, `DistributionTarget.swift`, `AudioPipeline.swift`) — the pluggable extension points. Reading these tells you what the system can grow into.
-5. **[`PodedgeCore/Sources/PodedgeCore/Models/Show.swift`](../../PodedgeCore/Sources/PodedgeCore/Models/Show.swift)** and **[`Episode.swift`](../../PodedgeCore/Sources/PodedgeCore/Models/Episode.swift)** — the two domain nouns the whole app revolves around.
+4. **[`PodedgeCore/Sources/PodedgeCore/Services/PublishService.swift`](../../PodedgeCore/Sources/PodedgeCore/Services/PublishService.swift)** — the end-to-end publish pipeline (upload → feed → distribute). Reading this shows how the protocols, `JobScheduler`, `FeedBuilder`, and `DistributionService` all compose.
+5. **[`PodedgeCore/Sources/PodedgeCore/Services/PodcastHost.swift`](../../PodedgeCore/Sources/PodedgeCore/Services/PodcastHost.swift)** and the sibling protocol files (`LLMProvider.swift`, `TranscriptionEngine.swift`, `DistributionTarget.swift`, `AudioPipeline.swift`) — the pluggable extension points. Reading these tells you what the system can grow into.
 
 Then read [`mental-model.md`](mental-model.md) to cement the shape.
 

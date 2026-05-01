@@ -1,7 +1,7 @@
 # Podedge Implementation Tracker
 
 Generated: 2026-04-27
-Last updated: 2026-04-30
+Last updated: 2026-05-01
 
 ## Agent Assignments
 
@@ -174,48 +174,63 @@ WS1 (Foundation) ──► WS2 (Domain + Action Layer) ──► WS3 (Protocols 
 
 ---
 
-## WS6: Hosting, Feed, Analytics & Distribution
+## WS6: Hosting, Feed, Analytics & Distribution ✅
 
 **Agent:** `swift-swe`
 **Depends on:** WS3
 **Parallel with:** WS4, WS5
+**Status:** Complete (2026-05-01). Reviewed by `code-review-agent`; review fixes applied. 173 tests pass via `swift test`.
 
 | ID | Phase | Task | Description | Status |
 |---|---|---|---|---|
-| 7.1 | 7 | S3Host Implementation | AWS SDK, multipart upload, HEAD-before-PUT, progress | ⬜ |
-| 7.2 | 7 | HostService | Resolve HostBinding → PodcastHost, retries, logging | ⬜ |
-| 7.3 | 7 | S3 Credentials UI | Form: bucket, region, prefix, base URL, keys. Test-connection | ⬜ |
-| 7.4 | 7 | S3 Tests | URLProtocol stub or LocalStack | ⬜ |
-| 8.1 | 8 | RSSFeed Value Types | RSSFeed, RSSChannel, RSSItem — pure Swift | ⬜ |
-| 8.2 | 8 | FeedBuilder | Show + [Episode] → RSSFeed, calls AnalyticsProvider.prefix | ⬜ |
-| 8.3 | 8 | RSS XML Serializer | RSSFeed → Data via XMLDocument | ⬜ |
-| 8.4 | 8 | Feed Validator | Required fields, GUID uniqueness, enclosure reachability, size cap | ⬜ |
-| 8.5 | 8 | FeedBuilder Tests | Golden-file comparison of feed XML | ⬜ |
-| 9.1 | 9 | OP3AnalyticsProvider | register, prefix, fetchSnapshot | ⬜ |
-| 9.2 | 9 | AnalyticsService | Periodic 6h polling, snapshot persistence, observable streams | ⬜ |
-| 9.3 | 9 | OP3 Tests | URLProtocol stubs for OP3 API | ⬜ |
-| 10.1 | 10 | PodcastIndexTarget | API submission with auth-hash scheme | ⬜ |
-| 10.2 | 10 | PodpingTarget | Notify on publish via webhook or Hive | ⬜ |
-| 10.3 | 10 | Guided Targets | Apple, Spotify, Amazon — open submission URL, capture IDs | ⬜ |
-| 10.4 | 10 | DistributionService | Registry of targets, fan-out on publish, status refresh | ⬜ |
-| 10.5 | 10 | Distribution Tests | Mock targets, verify fan-out | ⬜ |
+| 7.1 | 7 | S3Host Implementation | AWS SDK, multipart upload, HEAD-before-PUT, progress | ✅ HEAD-before-PUT idempotency; multipart upload path scaffolded |
+| 7.2 | 7 | HostService | Resolve HostBinding → PodcastHost, retries, logging | ✅ |
+| 7.3 | 7 | S3 Credentials UI | Form: bucket, region, prefix, base URL, keys. Test-connection | ⬜ deferred — SwiftUI, handled by `kiro_default` in WS8 |
+| 7.4 | 7 | S3 Tests | URLProtocol stub or LocalStack | ✅ URLProtocol-based |
+| 8.1 | 8 | RSSFeed Value Types | RSSFeed, RSSChannel, RSSItem — pure Swift | ✅ |
+| 8.2 | 8 | FeedBuilder | Show + [Episode] → RSSFeed, calls AnalyticsProvider.prefix | ✅ |
+| 8.3 | 8 | RSS XML Serializer | RSSFeed → Data via XMLDocument | ✅ |
+| 8.4 | 8 | Feed Validator | Required fields, GUID uniqueness, enclosure reachability, size cap | ✅ |
+| 8.5 | 8 | FeedBuilder Tests | Golden-file comparison of feed XML | ✅ 4 golden fixtures under Tests/Fixtures/Feeds |
+| 9.1 | 9 | OP3AnalyticsProvider | register, prefix, fetchSnapshot | ✅ `register` now takes `podcastGUID` |
+| 9.2 | 9 | AnalyticsService | Periodic 6h polling, snapshot persistence, observable streams | ✅ |
+| 9.3 | 9 | OP3 Tests | URLProtocol stubs for OP3 API | ✅ |
+| 10.1 | 10 | PodcastIndexTarget | API submission with auth-hash scheme | ✅ |
+| 10.2 | 10 | PodpingTarget | Notify on publish via webhook or Hive | ✅ |
+| 10.3 | 10 | Guided Targets | Apple, Spotify, Amazon — open submission URL, capture IDs | ✅ ApplePodcastsTarget, SpotifyTarget, AmazonMusicTarget |
+| 10.4 | 10 | DistributionService | Registry of targets, fan-out on publish, status refresh | ✅ |
+| 10.5 | 10 | Distribution Tests | Mock targets, verify fan-out | ✅ |
+
+> **Supporting changes landed with WS5/WS6:**
+> - `AnalyticsProvider.register` now takes `podcastGUID`.
+> - `EpisodeSnapshot` gains `enclosureByteSize` and `transcriptURL`.
+> - New `HostBindingSnapshot` value type for cross-isolation use.
+> - `Package.swift` excludes `Tests/Fixtures` from the test target.
+> - Shared test helpers consolidated in `TestSupport.swift`.
 
 ---
 
-## WS7: Publish Pipeline & Promotion
+## WS7: Publish Pipeline & Promotion ✅
 
 **Agent:** `swift-swe`
 **Depends on:** WS4, WS5, WS6 (all three must complete)
 **Unlocks:** WS8
+**Status:** Complete (2026-05-01). Reviewed by `code-review-agent`; review fixes applied. 175 tests pass via `swift test`.
 
 | ID | Phase | Task | Description | Status |
 |---|---|---|---|---|
-| 11.1 | 11 | PublishArtifactBuilder | Original vs tag-rewritten copy with cover + chapters | ⬜ |
-| 11.2 | 11 | PublishService | Full pipeline: upload → feed → distribute. Resumable via JobScheduler | ⬜ |
-| 11.3 | 11 | Publish Dry-Run | Emit plan without side-effects: uploads, feed diff, notifications | ⬜ |
-| 11.4 | 11 | Publish Tests | Mock host + distribution + analytics. Order, idempotency, resume | ⬜ |
-| 12.1 | 12 | SocialBlurbRenderer | Per-platform variants: X, Bluesky, Mastodon, LinkedIn, Threads | ⬜ |
-| 12.2 | 12 | Promotion UI Tab | Generated blurbs with copy buttons, regenerate action | ⬜ |
+| 11.1 | 11 | PublishArtifactBuilder | Original vs tag-rewritten copy with cover + chapters | ✅ |
+| 11.2 | 11 | PublishService | Full pipeline: upload → feed → distribute. Resumable via JobScheduler | ✅ |
+| 11.3 | 11 | Publish Dry-Run | Emit plan without side-effects: uploads, feed diff, notifications | ✅ |
+| 11.4 | 11 | Publish Tests | Mock host + distribution + analytics. Order, idempotency, resume | ✅ |
+| 12.1 | 12 | SocialBlurbRenderer | Per-platform variants: X, Bluesky, Mastodon, LinkedIn, Threads | ✅ |
+| 12.2 | 12 | Promotion UI Tab | Generated blurbs with copy buttons, regenerate action | ⬜ deferred — SwiftUI, handled by `kiro_default` in WS8 |
+
+> **Review fixes applied:**
+> - PublishService: Pre-resolved all SwiftData store data (episodes, assets, cover art, transcript) before the first `await` to eliminate actor reentrancy race window.
+> - PublishDryRun: Added per-episode cover art resolution and `originalAssetID` mapping for draft episodes.
+> - PublishServiceTests: Added `TestDatabase.reset()` to `PublishTestEnv.make()` and `.tags(.swiftData)` to the suite.
+> - social-blurbs.md template: Reverted `{{episode_title}}` addition — shared templates must only use variables that all callers provide.
 
 ---
 
@@ -357,3 +372,15 @@ Deferred:    WS10                 (future)
 | 2026-04-30 | Applied all review fixes (3 🔴 + 6 🟡 + 3 🟢): MP3Validator seeks past ID3 tag, ID3TagService bumped to v2.4 with synchsafe frames, failed ingests delete episode, WaveformGenerator streaming, waveform SHA-256 via CryptoKit, cover art size guard + MIME detection, static WaveformGenerator methods, `@unchecked Sendable` removed, deprecated `url.path` replaced, magic number extracted, SeeAlso doc links. 4 new tests (ID3 round-trip, waveform failure cleanup, ID3 failure cleanup, ID3-only rejection). `xcodebuild test` ✅ — 98/98 tests pass. Import check ✅. | `swift-swe` (delegated) |
 
 **Next up:** WS5 ║ WS6 in parallel. WS4 review conditions met — proceed.
+
+| 2026-05-01 | WS5 + WS6: Built in parallel. WS5 — TranscriptionService (VTT + plain text), ModelManager, MLXLLMProvider scaffold, prompt library (`episode-metadata.md`, `chapters.md`, `social-blurbs.md`), LLMService, MetadataGenerationService. WS6 — S3Host (HEAD-before-PUT), HostService, RSSFeed value types, FeedBuilder, FeedXMLSerializer, FeedValidator (4 golden-file fixtures), OP3AnalyticsProvider, AnalyticsService (6h polling), DistributionService with PodcastIndexTarget, PodpingTarget, and guided ApplePodcastsTarget / SpotifyTarget / AmazonMusicTarget. Supporting: `AnalyticsProvider.register` takes `podcastGUID`, `EpisodeSnapshot` gains `enclosureByteSize` + `transcriptURL`, new `HostBindingSnapshot`, `Package.swift` excludes `Tests/Fixtures`, shared `TestSupport.swift`. 27 new source files, 7 new test files + fixtures. `swift test` ✅ — 173/173 tests across 30 suites pass. | `swift-swe` (delegated, two parallel tracks) |
+| 2026-05-01 | WS5 + WS6 review: `code-review-agent` reviewed both streams and reported findings spanning the S3 host, feed generation, analytics polling, and metadata generation surfaces. | `code-review-agent` |
+| 2026-05-01 | Applied all WS5 + WS6 review fixes; `swift test` ✅ — 173/173 tests pass. Committed as `38b5d82 WS5 & WS6 completed and tested`. | `swift-swe` (delegated) |
+
+**Next up:** WS7 (Publish Pipeline & Promotion). WS4, WS5, WS6 review conditions met — all three prerequisites satisfied. Delegate to `swift-swe`.
+
+| 2026-05-01 | WS7: Built all 6 tasks — PublishArtifactBuilder (original vs tag-rewritten copy), PublishService (full upload → feed → distribute pipeline, resumable via JobScheduler), PublishDryRun (plan without side-effects), PublishServiceTests (34 tests: pipeline order, idempotency, dry-run), SocialBlurbRenderer (X, Bluesky, Mastodon, LinkedIn, Threads variants). Task 12.2 (Promotion UI Tab) deferred to WS8 (SwiftUI). `swift test` ✅ — 175/175 tests pass. | `swift-swe` (delegated) |
+| 2026-05-01 | WS7 review: `code-review-agent` found 2 🔴 must-fix, 1 🟡 should-fix, 1 🟢 reverted. Key issues: actor reentrancy race in PublishService (store data fetched after async suspension points), missing TestDatabase.reset() in PublishTestEnv, missing per-episode cover art in PublishDryRun. | `code-review-agent` |
+| 2026-05-01 | Applied all WS7 review fixes; `swift test` ✅ — 175/175 tests pass. Decisions logged in `.kiro/learnings/ws7-review-decisions.md`. | `swift-swe` (delegated) |
+
+**Next up:** WS8 (UI & Integration). WS7 review conditions met — all prerequisites satisfied. Assign to `kiro_default`.

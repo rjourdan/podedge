@@ -9,6 +9,7 @@ Changelog
 - 2026-05-01: Confirmed ConfirmationCoordinator lives in the app target, not PodedgeCore. ToolBroker returns .needsConfirmation as a data signal.
 - 2026-05-01: Collapsed Action Layer into Service Layer — ToolBroker, ToolRegistry, and AuditLogService are services in PodedgeCore/Services/, not a separate layer.
 - 2026-05-01: Confirmed publish flow is sequential — upload completes before distribution fan-out. PublishService not yet implemented; based on technical design §6.
+- 2026-05-01: WS7 complete. PublishService, PublishArtifactBuilder, PublishDryRun, and SocialBlurbRenderer now exist. Removed forward-looking caveat from publish flow section.
 -->
 
 ## One-sentence summary
@@ -42,6 +43,7 @@ flowchart TB
         Trans["TranscriptionService"]
         Dist["DistributionService"]
         Anal["AnalyticsService"]
+        Publish["PublishService<br/>PublishArtifactBuilder<br/>PublishDryRun"]
     end
     subgraph Ext["Pluggable Extensions (PodedgeCore)"]
         Hosts["PodcastHost<br/>(S3Host)"]
@@ -64,8 +66,6 @@ flowchart TB
 *Shows the enforced dependency direction: the UI depends on the Service Layer, which depends on Models and Extensions. `ConfirmationCoordinator` lives in the app target (it presents SwiftUI) and is driven by a data signal from `ToolBroker` — this keeps `PodedgeCore` free of SwiftUI.*
 
 ## Canonical flow: publishing an episode
-
-> **Forward-looking.** The full publish chain is not yet wired end-to-end. `PublishService` does not exist in the code today; `Job.parentJobID` provides the sequencing mechanism the chain will use. This diagram reflects the intended design from [`.kiro/idea/podedge-technical-design.md`](../../.kiro/idea/podedge-technical-design.md) §6.
 
 ```mermaid
 sequenceDiagram
@@ -97,7 +97,7 @@ sequenceDiagram
     J-->>UI: job complete
 ```
 
-*The sequence that ties the five tenets together. Distribution runs after the feed is uploaded — `DistributionTarget.submit(feedURL:show:)` requires the feed to be live at that URL. The fan-out across distribution targets happens in parallel via `DistributionService.submitToAll`, which uses a `TaskGroup` internally.*
+*The sequence that ties the five tenets together. `PublishService` orchestrates the pipeline; `PublishArtifactBuilder` decides whether to use the original MP3 or a tag-rewritten copy. Distribution runs after the feed is uploaded — `DistributionTarget.submit(feedURL:show:)` requires the feed to be live at that URL. The fan-out across distribution targets happens in parallel via `DistributionService.submitToAll`, which uses a `TaskGroup` internally. `PublishDryRun` can produce the same plan without side-effects for user review before committing.*
 
 ## Invariants that must never break
 
