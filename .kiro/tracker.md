@@ -320,6 +320,7 @@ Tracked for planning only. No agent assignment yet.
 | 15.G | 15 | CLI (podedge-cli) | swift-argument-parser, shared SwiftData store, --dry-run |
 | 15.H | 15 | External MCP Agent Access | MCPServerInterface, AgentSession, pairing UI, podedge-agent |
 | 15.I | 15 | Phase-Dependency Update | PodedgeCore prerequisite for 15.F, 15.G, 15.H |
+| 15.J | 15 | In-App Hosting Provisioning | One-click S3 bucket + CloudFront + OAC + IAM setup from the app or assistant. User provides AWS admin credentials once; app creates all resources via AWS SDK and stores the scoped IAM key. Eliminates manual AWS Console setup. |
 
 ---
 

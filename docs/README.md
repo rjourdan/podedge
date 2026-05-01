@@ -5,7 +5,11 @@ This tree holds all written documentation for the Podedge project.
 ## Who each section is for
 
 - **[`dev/`](dev/)** — developers building or maintaining Podedge. Start with [`dev/onboarding.md`](dev/onboarding.md), then skim [`dev/mental-model.md`](dev/mental-model.md).
-- **[`user/`](user/)** — end users of the Podedge macOS app. *(Placeholder — no pages written yet.)*
+- **[`user/`](user/)** — end users of the Podedge macOS app.
+  - [`user/getting-started.md`](user/getting-started.md) — system requirements, onboarding flow, first show, first episode, publish overview.
+  - [`user/s3-hosting-setup.md`](user/s3-hosting-setup.md) — create an S3 bucket, set up public access, create a least-privilege IAM user, enter credentials in Podedge. Also covers Cloudflare R2, DigitalOcean Spaces, and MinIO.
+  - [`user/op3-analytics.md`](user/op3-analytics.md) — enable OP3 download analytics, view charts, troubleshoot.
+  - [`user/publishing.md`](user/publishing.md) — episode lifecycle, publish pipeline, dry run, distribution targets (Apple Podcasts, Spotify, Amazon Music, Podcast Index, Podping), unpublishing.
 - **[`decisions/`](decisions/)** — Architecture Decision Records. See [`decisions/README.md`](decisions/README.md) for the index and template.
 
 ## Authoring conventions
