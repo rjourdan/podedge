@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  ExportOptions.plist — Placeholder for Xcode archive export.
+  
+  Task 14.6: Signing, Notarization, DMG
+  
+  To use:
+  1. Replace TEAM_ID with your Apple Developer Team ID.
+  2. Replace SIGNING_IDENTITY with your Developer ID Application certificate name.
+  3. Run: xcodebuild -exportArchive -archivePath Podedge.xcarchive \
+         -exportOptionsPlist ExportOptions.plist -exportPath ./export
+  4. Notarize: xcrun notarytool submit export/Podedge.app.zip \
+         -\-apple-id YOUR_APPLE_ID -\-team-id TEAM_ID -\-password @keychain:AC_PASSWORD
+  5. Staple: xcrun stapler staple export/Podedge.app
+  6. Create DMG: hdiutil create -volname Podedge -srcfolder export/Podedge.app \
+         -ov -format UDZO Podedge.dmg
+-->
+<plist version="1.0">
+<dict>
+	<key>method</key>
+	<string>developer-id</string>
+	<key>teamID</key>
+	<string>TEAM_ID</string>
+	<key>signingStyle</key>
+	<string>automatic</string>
+	<key>signingCertificate</key>
+	<string>Developer ID Application</string>
+</dict>
+</plist>

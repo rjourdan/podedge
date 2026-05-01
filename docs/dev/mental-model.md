@@ -10,6 +10,7 @@ Changelog
 - 2026-05-01: Collapsed Action Layer into Service Layer — ToolBroker, ToolRegistry, and AuditLogService are services in PodedgeCore/Services/, not a separate layer.
 - 2026-05-01: Confirmed publish flow is sequential — upload completes before distribution fan-out. PublishService not yet implemented; based on technical design §6.
 - 2026-05-01: WS7 complete. PublishService, PublishArtifactBuilder, PublishDryRun, and SocialBlurbRenderer now exist. Removed forward-looking caveat from publish flow section.
+- 2026-05-01: WS8 complete. UI layer now exists in Podedge/ (23 files). Updated subgraph label and added ConfirmationCoordinator to diagram.
 -->
 
 ## One-sentence summary
@@ -28,7 +29,7 @@ Podedge is a macOS app that turns a dropped MP3 into a published podcast episode
 
 ```mermaid
 flowchart TB
-    subgraph UI["UI Layer (planned: Podedge/ app target)"]
+    subgraph UI["UI Layer (Podedge/ app target — 23 files)"]
         Views["SwiftUI Views<br/>MainWindow, EpisodeEditor, ..."]
         Confirm["ConfirmationCoordinator<br/>(presents confirmation sheet)"]
     end

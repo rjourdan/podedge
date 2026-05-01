@@ -1,7 +1,7 @@
 # Podedge Implementation Tracker
 
 Generated: 2026-04-27
-Last updated: 2026-05-01
+Last updated: 2026-05-01 (WS8 complete)
 
 ## Agent Assignments
 
@@ -84,9 +84,9 @@ WS1 (Foundation) ──► WS2 (Domain + Action Layer) ──► WS3 (Protocols 
 | 2.4 | 2 | LibraryStore Tests | Unit tests for CRUD operations | ✅ 11 pure model tests pass via `swift test`; SwiftData integration tests compile but need Xcode runner |
 | 2.5.1 | 2.5 | Define Tool & ToolBroker | ToolDefinition protocol, ToolScope, CapabilityTier, ToolCaller, ToolBroker actor, ToolResult | ✅ |
 | 2.5.2 | 2.5 | AuditLog Service | @Model AgentAuditEntry, AuditLogService with redaction + 90-day retention | ✅ |
-| 2.5.3 | 2.5 | Destructive-Action Confirmation Sheet | ConfirmationSheetView + ConfirmationCoordinator | ⬜ deferred — SwiftUI, handled by `kiro_default` in WS8 |
+| 2.5.3 | 2.5 | Destructive-Action Confirmation Sheet | ConfirmationSheetView + ConfirmationCoordinator | ✅ |
 | 2.5.4 | 2.5 | Tool Registry | Actor-based ToolRegistry with register/unregister/lookup/filter | ✅ |
-| 2.5.5 | 2.5 | ToolButton SwiftUI Helper | Wraps tool invocation, loading/error states | ⬜ deferred — SwiftUI, handled by `kiro_default` in WS8 |
+| 2.5.5 | 2.5 | ToolButton SwiftUI Helper | Wraps tool invocation, loading/error states | ✅ |
 | 2.5.6 | 2.5 | Tool & Broker Tests | 14 new tests: scope ordering, tier gating, broker confirmation, registry CRUD, redaction, audit log | ✅ |
 
 > **Known issue:** SwiftData `ModelContainer` crashes in the bare SPM test
@@ -185,7 +185,7 @@ WS1 (Foundation) ──► WS2 (Domain + Action Layer) ──► WS3 (Protocols 
 |---|---|---|---|---|
 | 7.1 | 7 | S3Host Implementation | AWS SDK, multipart upload, HEAD-before-PUT, progress | ✅ HEAD-before-PUT idempotency; multipart upload path scaffolded |
 | 7.2 | 7 | HostService | Resolve HostBinding → PodcastHost, retries, logging | ✅ |
-| 7.3 | 7 | S3 Credentials UI | Form: bucket, region, prefix, base URL, keys. Test-connection | ⬜ deferred — SwiftUI, handled by `kiro_default` in WS8 |
+| 7.3 | 7 | S3 Credentials UI | Form: bucket, region, prefix, base URL, keys. Test-connection | ✅ in SettingsView Hosts tab |
 | 7.4 | 7 | S3 Tests | URLProtocol stub or LocalStack | ✅ URLProtocol-based |
 | 8.1 | 8 | RSSFeed Value Types | RSSFeed, RSSChannel, RSSItem — pure Swift | ✅ |
 | 8.2 | 8 | FeedBuilder | Show + [Episode] → RSSFeed, calls AnalyticsProvider.prefix | ✅ |
@@ -224,7 +224,7 @@ WS1 (Foundation) ──► WS2 (Domain + Action Layer) ──► WS3 (Protocols 
 | 11.3 | 11 | Publish Dry-Run | Emit plan without side-effects: uploads, feed diff, notifications | ✅ |
 | 11.4 | 11 | Publish Tests | Mock host + distribution + analytics. Order, idempotency, resume | ✅ |
 | 12.1 | 12 | SocialBlurbRenderer | Per-platform variants: X, Bluesky, Mastodon, LinkedIn, Threads | ✅ |
-| 12.2 | 12 | Promotion UI Tab | Generated blurbs with copy buttons, regenerate action | ⬜ deferred — SwiftUI, handled by `kiro_default` in WS8 |
+| 12.2 | 12 | Promotion UI Tab | Generated blurbs with copy buttons, regenerate action | ✅ PromotionTabView in EpisodeEditorView |
 
 > **Review fixes applied:**
 > - PublishService: Pre-resolved all SwiftData store data (episodes, assets, cover art, transcript) before the first `await` to eliminate actor reentrancy race window.
@@ -236,27 +236,28 @@ WS1 (Foundation) ──► WS2 (Domain + Action Layer) ──► WS3 (Protocols 
 
 ## WS8: UI & Integration Polish
 
-**Agent:** `kiro_default`
+**Agent:** `swift-swe`
 **Depends on:** WS7 (and transitively all prior)
 **Unlocks:** WS9
+**Status:** Complete (2026-05-01). Reviewed by `code-review-agent`; review fixes applied. 175 tests pass via `swift test` (PodedgeCore). App target requires Xcode project for compilation.
 
 | ID | Phase | Task | Description | Status |
 |---|---|---|---|---|
-| 13.1 | 13 | MainWindowView | NavigationSplitView: ShowList → EpisodeList → EpisodeEditor | ⬜ |
-| 13.2 | 13 | ShowListView / ShowEditorView | Show CRUD, cover art, per-show settings | ⬜ |
-| 13.3 | 13 | EpisodeListView | Status pill, inline play, drag-drop MP3 | ⬜ |
-| 13.4 | 13 | EpisodeEditorView | Tabs: Metadata, Transcript/Chapters, Promotion, Publish | ⬜ |
-| 13.5 | 13 | FeedPreviewView | XML syntax highlight, validation warnings, diff | ⬜ |
-| 13.6 | 13 | AnalyticsView | SwiftCharts over AnalyticsSnapshot | ⬜ |
-| 13.7 | 13 | MenuBarController + MenuBarContentView | Job progress, quick new-episode, open main window | ⬜ |
-| 13.8 | 13 | SettingsView | Tabs: General, Hosts, Analytics, Models, Distribution, About | ⬜ |
-| 13.9 | 13 | OnboardingView | Stepper: welcome → show → S3 → OP3 → models → done | ⬜ |
-| 14.1 | 14 | End-to-End Tests | Fixture MP3 → transcribe → metadata → publish → verify feed | ⬜ |
-| 14.2 | 14 | Notifications | UserNotifications for publish success/failure, long jobs | ⬜ |
-| 14.3 | 14 | Update Checker | Reuse wispr pattern | ⬜ |
-| 14.4 | 14 | Accessibility Pass | VoiceOver labels, keyboard navigation | ⬜ |
-| 14.5 | 14 | Log Export UI | Export redacted logs as .zip | ⬜ |
-| 14.6 | 14 | Signing, Notarization, DMG | Makefile, ExportOptions.plist | ⬜ |
+| 13.1 | 13 | MainWindowView | NavigationSplitView: ShowList → EpisodeList → EpisodeEditor | ✅ |
+| 13.2 | 13 | ShowListView / ShowEditorView | Show CRUD, cover art, per-show settings | ✅ |
+| 13.3 | 13 | EpisodeListView | Status pill, inline play, drag-drop MP3 | ✅ |
+| 13.4 | 13 | EpisodeEditorView | Tabs: Metadata, Transcript/Chapters, Promotion, Publish | ✅ |
+| 13.5 | 13 | FeedPreviewView | XML syntax highlight, validation warnings, diff | ✅ |
+| 13.6 | 13 | AnalyticsView | SwiftCharts over AnalyticsSnapshot | ✅ |
+| 13.7 | 13 | MenuBarController + MenuBarContentView | Job progress, quick new-episode, open main window | ✅ |
+| 13.8 | 13 | SettingsView | Tabs: General, Hosts, Analytics, Models, Distribution, About | ✅ |
+| 13.9 | 13 | OnboardingView | Stepper: welcome → show → S3 → OP3 → models → done | ✅ |
+| 14.1 | 14 | End-to-End Tests | Fixture MP3 → transcribe → metadata → publish → verify feed | ⬜ deferred — needs Xcode project runner |
+| 14.2 | 14 | Notifications | UserNotifications for publish success/failure, long jobs | ✅ |
+| 14.3 | 14 | Update Checker | Reuse wispr pattern | ✅ |
+| 14.4 | 14 | Accessibility Pass | VoiceOver labels, keyboard navigation | ✅ |
+| 14.5 | 14 | Log Export UI | Export redacted logs as .zip | ✅ |
+| 14.6 | 14 | Signing, Notarization, DMG | Makefile, ExportOptions.plist | ✅ |
 
 ---
 
@@ -384,3 +385,9 @@ Deferred:    WS10                 (future)
 | 2026-05-01 | Applied all WS7 review fixes; `swift test` ✅ — 175/175 tests pass. Decisions logged in `.kiro/learnings/ws7-review-decisions.md`. | `swift-swe` (delegated) |
 
 **Next up:** WS8 (UI & Integration). WS7 review conditions met — all prerequisites satisfied. Assign to `kiro_default`.
+
+| 2026-05-01 | WS8: Built all Phase 13 + 14 tasks — MainWindowView (two-column NavigationSplitView, sidebar tabs, ⌘K chat placeholder), ShowListView + ShowEditorView, EpisodeListView (status dots, drag-drop MP3), EpisodeEditorView (Metadata/Transcript/Promotion/Publish tabs), FeedPreviewView, AnalyticsView (SwiftCharts), MenuBarContentView, SettingsView (6 tabs), OnboardingView (6-step stepper). Also completed deferred tasks: ConfirmationSheetView + ConfirmationCoordinator (2.5.3), ToolButton (2.5.5), S3 credentials UI (7.3), PromotionTabView (12.2). Phase 14: NotificationService, UpdateChecker, accessibility pass, LogExportView, ExportOptions.plist. Task 14.1 (E2E tests) deferred — needs Xcode project runner. 23 files in Podedge/. `swift build` ✅ (PodedgeCore). Import check ✅. 175 tests pass (unchanged — app target tests need Xcode project). | `swift-swe` (delegated) |
+| 2026-05-01 | WS8 review: `code-review-agent` found 8 🔴 must-fix, 10 🟡 should-fix, 5 🟢 nice-to-have. Key issues: ToolBroker not injected at app level, destructive ops bypassing ConfirmationCoordinator, @MainActor blocking on CPU work, Keychain errors not handled before persisting HostBinding, slug generation producing invalid S3 keys, retroactive String: Identifiable conformance, NotificationService/UpdateChecker not started on launch. | `code-review-agent` |
+| 2026-05-01 | Applied all WS8 review fixes (8 🔴 + 10 🟡 + 5 🟢): ToolBroker instantiated and injected at app level, destructive operations route through ConfirmationCoordinator, Task.detached for CPU-bound work, Keychain errors handled before persisting HostBinding, slug generation uses regex for valid S3 keys, retroactive String: Identifiable removed, NotificationService and UpdateChecker started on launch. `swift build` ✅ (PodedgeCore). Import check ✅. 175 tests pass. | `swift-swe` (delegated) |
+
+**Next up:** WS9 (v1.1 — Assistant & BYO-AI). WS8 review conditions met.

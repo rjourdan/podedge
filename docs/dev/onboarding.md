@@ -8,6 +8,7 @@ Changelog
 - 2026-05-01: Initial draft. Reflects PodedgeCore state only; the app target has not yet landed in the repo.
 - 2026-05-01: Confirmed OvercastTarget stub as first-change task — guided targets are ~32-line copy-paste-adapt pattern with matching ~10-line tests (verified in Distribution/ and DistributionServiceTests.swift).
 - 2026-05-01: WS7 complete. PublishService, PublishArtifactBuilder, PublishDryRun, and SocialBlurbRenderer now exist in PodedgeCore.
+- 2026-05-01: WS8 complete. Podedge/ app target now exists (23 files). Requires Xcode project to compile; PodedgeCore still builds via `swift build`.
 -->
 
 ## What Podedge is (in one paragraph)
@@ -33,7 +34,7 @@ git clone https://github.com/rjourdan/podedge.git
 cd podedge
 ```
 
-**Today, only `PodedgeCore` (the Swift package) builds.** The app target referenced by the repo-level `Makefile` (`Podedge.xcworkspace`) has not yet been added. To build and test what's there:
+**Today, `PodedgeCore` (the Swift package) builds via the command line. The `Podedge/` app target exists (23 SwiftUI files) but requires an Xcode project to compile — the `.xcodeproj` has not yet been committed.** To build and test what's there:
 
 ```bash
 cd PodedgeCore
@@ -41,14 +42,14 @@ swift build
 swift test
 ```
 
-Once the app workspace lands, the canonical entry points become `make build` and `make test` from the repo root.
+Once the Xcode workspace lands, the canonical entry points become `make build` and `make test` from the repo root.
 
 ## Project layout
 
 ```mermaid
 flowchart TD
     Repo["podedge/"] --> Core["PodedgeCore/<br/>Swift package, no UI imports"]
-    Repo --> App["Podedge/ (planned)<br/>macOS app target, SwiftUI"]
+    Repo --> App["Podedge/<br/>macOS app target, SwiftUI (23 files)"]
     Repo --> Scripts["scripts/"]
     Repo --> Docs["docs/"]
     Core --> Models["Sources/.../Models/<br/>SwiftData @Model types + enums"]
@@ -58,9 +59,10 @@ flowchart TD
     Core --> LLM["Sources/.../LLM/<br/>LLMProvider implementations"]
     Core --> Analytics["Sources/.../Analytics/<br/>AnalyticsProvider implementations"]
     Core --> Feed["Sources/.../Feed/<br/>RSS value types"]
+    App --> Core
 ```
 
-*The Swift package is the real codebase today. The app target is planned.*
+*`PodedgeCore` is the real codebase. The app target wraps it with SwiftUI views and requires an Xcode project to compile.*
 
 ## The 5 files to read on day one
 
@@ -97,4 +99,4 @@ If you can complete this, you understand the protocol-extension pattern, the tes
 
 **Open questions for the lead developer:**
 
-- When the app target lands, update the "Clone and build" section to point at `make build` / `make test` and remove the "only PodedgeCore builds today" note.
+- When the Xcode project lands, update the "Clone and build" section to point at `make build` / `make test` and remove the "requires Xcode project" note.
