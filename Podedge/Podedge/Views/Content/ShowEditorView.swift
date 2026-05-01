@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import UniformTypeIdentifiers
 import PodedgeCore
 
 /// Detail view for editing a show's metadata, cover art, and per-show settings.

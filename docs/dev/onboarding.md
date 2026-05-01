@@ -9,6 +9,7 @@ Changelog
 - 2026-05-01: Confirmed OvercastTarget stub as first-change task — guided targets are ~32-line copy-paste-adapt pattern with matching ~10-line tests (verified in Distribution/ and DistributionServiceTests.swift).
 - 2026-05-01: WS7 complete. PublishService, PublishArtifactBuilder, PublishDryRun, and SocialBlurbRenderer now exist in PodedgeCore.
 - 2026-05-01: WS8 complete. Podedge/ app target now exists (23 files). Requires Xcode project to compile; PodedgeCore still builds via `swift build`.
+- 2026-05-01: Xcode project created at Podedge/Podedge.xcodeproj. App builds and runs. Updated build instructions and project layout diagram.
 -->
 
 ## What Podedge is (in one paragraph)
@@ -34,24 +35,39 @@ git clone https://github.com/rjourdan/podedge.git
 cd podedge
 ```
 
-**Today, `PodedgeCore` (the Swift package) builds via the command line. The `Podedge/` app target exists (23 SwiftUI files) but requires an Xcode project to compile — the `.xcodeproj` has not yet been committed.** To build and test what's there:
+### Running the app in Xcode
+
+1. **Open the project** — double-click `Podedge/Podedge.xcodeproj` in Finder, or from Terminal:
+   ```bash
+   open Podedge/Podedge.xcodeproj
+   ```
+2. **Wait for package resolution** — Xcode automatically finds the `PodedgeCore` local package dependency. You'll see a "Resolving packages…" spinner in the status bar. This takes a few seconds on first open.
+3. **Select the scheme** — In the toolbar (top-left, next to the ▶ play button), make sure it says **Podedge > My Mac**. If it shows something else, click it and select **Podedge** from the dropdown.
+4. **Build and run** — Press **⌘R** (or click the ▶ button). The first build takes ~1 minute to compile PodedgeCore. Subsequent builds are incremental and fast.
+5. **The app launches** — On first run you'll see the onboarding flow (welcome → create show → S3 credentials → OP3 → models → done).
+
+### Building PodedgeCore from the command line
+
+PodedgeCore can be built and tested without Xcode:
 
 ```bash
 cd PodedgeCore
-swift build
-swift test
+swift build       # compile the package
+swift test        # run all 175 tests
 ```
 
-Once the Xcode workspace lands, the canonical entry points become `make build` and `make test` from the repo root.
+This is useful for quick iteration on services, models, and protocols without opening Xcode.
 
 ## Project layout
 
 ```mermaid
 flowchart TD
-    Repo["podedge/"] --> Core["PodedgeCore/<br/>Swift package, no UI imports"]
-    Repo --> App["Podedge/<br/>macOS app target, SwiftUI (23 files)"]
-    Repo --> Scripts["scripts/"]
-    Repo --> Docs["docs/"]
+    Repo["podedge/"] --> XcodeDir["Podedge/"]
+    XcodeDir --> Proj["Podedge.xcodeproj"]
+    XcodeDir --> App["Podedge/<br/>20 Swift source files + plists"]
+    XcodeDir --> Tests["PodedgeTests/ + PodedgeUITests/"]
+    Repo --> Core["PodedgeCore/<br/>Swift package, no UI imports"]
+    Proj --> Core
     Core --> Models["Sources/.../Models/<br/>SwiftData @Model types + enums"]
     Core --> Services["Sources/.../Services/<br/>Business logic + protocols"]
     Core --> Hosts["Sources/.../Hosts/<br/>PodcastHost implementations"]
@@ -59,10 +75,9 @@ flowchart TD
     Core --> LLM["Sources/.../LLM/<br/>LLMProvider implementations"]
     Core --> Analytics["Sources/.../Analytics/<br/>AnalyticsProvider implementations"]
     Core --> Feed["Sources/.../Feed/<br/>RSS value types"]
-    App --> Core
 ```
 
-*`PodedgeCore` is the real codebase. The app target wraps it with SwiftUI views and requires an Xcode project to compile.*
+*`PodedgeCore` is the real codebase. The app target wraps it with SwiftUI views. `PodedgeCore` is added as a local package dependency in `Podedge.xcodeproj`.*
 
 ## The 5 files to read on day one
 
@@ -96,7 +111,3 @@ If you can complete this, you understand the protocol-extension pattern, the tes
 - [`.kiro/skills/swift-concurrency/`](../../.kiro/skills/swift-concurrency/) — concurrency skills cards. Start with `_index.md` and `actors.md`.
 
 ---
-
-**Open questions for the lead developer:**
-
-- When the Xcode project lands, update the "Clone and build" section to point at `make build` / `make test` and remove the "requires Xcode project" note.

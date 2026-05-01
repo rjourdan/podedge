@@ -1,7 +1,7 @@
 # Podedge Implementation Tracker
 
 Generated: 2026-04-27
-Last updated: 2026-05-01 (WS8 complete)
+Last updated: 2026-05-01 (Xcode project created, app builds)
 
 ## Agent Assignments
 
@@ -54,18 +54,16 @@ WS1 (Foundation) ──► WS2 (Domain + Action Layer) ──► WS3 (Protocols 
 
 | ID | Phase | Task | Description | Status |
 |---|---|---|---|---|
-| 1.1 | 1 | Create Xcode Project Structure | PodedgeApp.swift, Info.plist, entitlements, workspace | ⬜ deferred — Xcode project not yet created, PodedgeCore package built first |
-| 1.2 | 1 | Configure Entitlements | Sandbox, network.client, files.user-selected.read-write | ⬜ deferred — needs Xcode project |
+| 1.1 | 1 | Create Xcode Project Structure | PodedgeApp.swift, Info.plist, entitlements, workspace | ✅ |
+| 1.2 | 1 | Configure Entitlements | Sandbox, network.client, files.user-selected.read-write | ✅ |
 | 1.3 | 1 | Add Swift Package Dependencies | AWS SDK, WhisperKit, MLX-Swift, swift-markdown | ⬜ deferred — added as needed per WS |
 | 1.4 | 1 | Set Up Folder Structure | Models/, Services/, Extensions/, Hosts/, etc. | ✅ |
 | 1.5.1 | 1.5 | Create PodedgeCore Swift Package | Package.swift, Sources/PodedgeCore/ structure | ✅ |
-| 1.5.2 | 1.5 | Convert to Workspace | Podedge.xcworkspace, app depends on PodedgeCore | ⬜ deferred — needs Xcode project |
+| 1.5.2 | 1.5 | Convert to Workspace | Podedge.xcworkspace, app depends on PodedgeCore | ✅ PodedgeCore added as local package dependency in Podedge.xcodeproj |
 | 1.5.3 | 1.5 | No AppKit/SwiftUI in PodedgeCore | grep CI check, enforce Foundation-only imports | ✅ Makefile check-core-imports verified |
 | 1.5.4 | 1.5 | Move Services as Built | Establish convention: services go in PodedgeCore | ✅ convention established |
 
-> **Note:** Tasks 1.1, 1.2, 1.3, 1.5.2 are deferred until WS8 (UI layer).
-> PodedgeCore is the priority — the Xcode app project wraps it later.
-> Makefile already references the workspace structure for when it's created.
+> **Note:** Tasks 1.1, 1.2, and 1.5.2 are complete — Xcode project created and app builds. Task 1.3 remains deferred (dependencies added as needed per WS).
 
 ---
 
@@ -391,3 +389,5 @@ Deferred:    WS10                 (future)
 | 2026-05-01 | Applied all WS8 review fixes (8 🔴 + 10 🟡 + 5 🟢): ToolBroker instantiated and injected at app level, destructive operations route through ConfirmationCoordinator, Task.detached for CPU-bound work, Keychain errors handled before persisting HostBinding, slug generation uses regex for valid S3 keys, retroactive String: Identifiable removed, NotificationService and UpdateChecker started on launch. `swift build` ✅ (PodedgeCore). Import check ✅. 175 tests pass. | `swift-swe` (delegated) |
 
 **Next up:** WS9 (v1.1 — Assistant & BYO-AI). WS8 review conditions met.
+
+| 2026-05-01 | Xcode project created at `Podedge/Podedge.xcodeproj`. App target compiles and runs. PodedgeCore added as local package dependency (no separate workspace needed). Build fixes applied: `import os` in EpisodeListView, `import UniformTypeIdentifiers` in LogExportView + ShowEditorView, `.accent` → `.tint` in OnboardingView/DashboardView/SettingsView, `#Predicate` enum comparison via `.rawValue`, `onKeyPress` → `keyboardShortcut` in MainWindowView. Tasks 1.1, 1.2, 1.5.2 marked complete. | `kiro_default` |

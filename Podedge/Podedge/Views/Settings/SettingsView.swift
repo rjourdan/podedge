@@ -312,7 +312,7 @@ private struct AboutSettingsTab: View {
         VStack(spacing: 16) {
             Image(systemName: "antenna.radiowaves.left.and.right")
                 .font(.system(size: 48))
-                .foregroundStyle(.accent)
+                .foregroundStyle(.tint)
 
             Text("Podedge")
                 .font(.title)

@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		E8B359722FA4F61C002C76D8 /* PodedgeCore in Frameworks */ = {isa = PBXBuildFile; productRef = E8B359712FA4F61C002C76D8 /* PodedgeCore */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		E8B358D82FA4F51F002C76D8 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -52,6 +56,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E8B359722FA4F61C002C76D8 /* PodedgeCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -112,6 +117,7 @@
 			);
 			name = Podedge;
 			packageProductDependencies = (
+				E8B359712FA4F61C002C76D8 /* PodedgeCore */,
 			);
 			productName = Podedge;
 			productReference = E8B358CA2FA4F51D002C76D8 /* Podedge.app */;
@@ -195,6 +201,9 @@
 			);
 			mainGroup = E8B358C12FA4F51D002C76D8;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				E8B359702FA4F61C002C76D8 /* XCLocalSwiftPackageReference "../PodedgeCore" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = E8B358CB2FA4F51D002C76D8 /* Products */;
 			projectDirPath = "";
@@ -563,6 +572,20 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		E8B359702FA4F61C002C76D8 /* XCLocalSwiftPackageReference "../PodedgeCore" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../PodedgeCore;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		E8B359712FA4F61C002C76D8 /* PodedgeCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PodedgeCore;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = E8B358C22FA4F51D002C76D8 /* Project object */;
 }

@@ -29,10 +29,7 @@ struct MainWindowView: View {
         }
         .navigationSplitViewColumnWidth(min: 220, ideal: 260, max: 340)
         .frame(minWidth: 800, minHeight: 500)
-        .onKeyPress(.init("k"), modifiers: .command) {
-            chatFocused = true
-            return .handled
-        }
+        .keyboardShortcut("k", modifiers: .command)
     }
 
     // MARK: - Sidebar

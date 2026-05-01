@@ -88,7 +88,7 @@ struct OnboardingView: View {
         VStack(spacing: 16) {
             Image(systemName: "antenna.radiowaves.left.and.right")
                 .font(.system(size: 56))
-                .foregroundStyle(.accent)
+                .foregroundStyle(.tint)
             Text("Welcome to Podedge")
                 .font(.largeTitle)
                 .fontWeight(.bold)

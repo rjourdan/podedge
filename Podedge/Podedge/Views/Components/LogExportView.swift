@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 import PodedgeCore
 
 /// UI for exporting redacted logs as a .zip file.

@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import UniformTypeIdentifiers
+import os
 import PodedgeCore
 
 /// Sidebar list of episodes for the selected show, with status dots and drag-drop MP3 import.

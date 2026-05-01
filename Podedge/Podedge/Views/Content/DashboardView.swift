@@ -5,7 +5,7 @@ import PodedgeCore
 /// Default content view when no show or episode is selected.
 struct DashboardView: View {
     @Query(sort: \Show.title) private var shows: [Show]
-    @Query(filter: #Predicate<Episode> { $0.status == .published }) private var publishedEpisodes: [Episode]
+    @Query(filter: #Predicate<Episode> { $0.status.rawValue == "published" }) private var publishedEpisodes: [Episode]
     @Query(sort: \Job.createdAt, order: .reverse) private var recentJobs: [Job]
 
     var body: some View {
@@ -76,7 +76,7 @@ private struct StatCard: View {
         VStack(spacing: 8) {
             Image(systemName: icon)
                 .font(.title2)
-                .foregroundStyle(.accent)
+                .foregroundStyle(.tint)
             Text(value)
                 .font(.title)
                 .fontWeight(.semibold)
