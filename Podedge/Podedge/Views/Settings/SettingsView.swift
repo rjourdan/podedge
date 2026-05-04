@@ -197,38 +197,80 @@ private struct AnalyticsSettingsTab: View {
     @Query private var analyticsBindings: [AnalyticsBinding]
     @Environment(\.modelContext) private var modelContext
 
-    @State private var prefixBaseURL = "https://op3.dev/e"
-    @State private var externalShowID = ""
+    @State private var showingImport = false
+    @State private var importShowUUID = ""
 
     var body: some View {
         Form {
-            Section("OP3 Analytics") {
-                TextField("Prefix Base URL", text: $prefixBaseURL)
-                TextField("External Show ID", text: $externalShowID)
-
-                Button("Add OP3 Binding") {
-                    guard let url = URL(string: prefixBaseURL) else { return }
-                    let binding = AnalyticsBinding(
-                        provider: "op3",
-                        prefixBaseURL: url,
-                        keychainRef: nil
-                    )
-                    binding.externalShowID = externalShowID.isEmpty ? nil : externalShowID
-                    modelContext.insert(binding)
-                }
-                .disabled(prefixBaseURL.isEmpty)
-                .accessibilityLabel("Add OP3 analytics binding")
-            }
-
-            if !analyticsBindings.isEmpty {
-                Section("Configured Bindings") {
-                    ForEach(analyticsBindings) { binding in
-                        LabeledContent(binding.provider) {
-                            Text(binding.prefixBaseURL.absoluteString)
+            if let binding = analyticsBindings.first {
+                Section("OP3 Analytics") {
+                    LabeledContent("Status") {
+                        if let showID = binding.externalShowID, !showID.isEmpty {
+                            Label("Registered", systemImage: "checkmark.circle.fill")
+                                .foregroundStyle(.green)
                                 .font(.caption)
-                                .foregroundStyle(.secondary)
+                        } else {
+                            Label("Pending — registers on first publish", systemImage: "clock")
+                                .foregroundStyle(.orange)
+                                .font(.caption)
                         }
                     }
+                    if let showID = binding.externalShowID, !showID.isEmpty {
+                        LabeledContent("Show UUID") {
+                            Text(showID)
+                                .font(.caption.monospaced())
+                                .foregroundStyle(.secondary)
+                                .textSelection(.enabled)
+                        }
+                    }
+                    LabeledContent("Prefix") {
+                        Text(binding.prefixBaseURL.absoluteString)
+                            .font(.caption.monospaced())
+                            .foregroundStyle(.secondary)
+                    }
+                    Link("View analytics on op3.dev", destination: URL(string: "https://op3.dev")!)
+                        .font(.caption)
+                }
+                Section {
+                    Button("Remove OP3 Analytics", role: .destructive) {
+                        modelContext.delete(binding)
+                    }
+                    .accessibilityLabel("Remove OP3 analytics binding")
+                }
+            } else {
+                Section("OP3 Analytics") {
+                    Text("Download analytics are not enabled.")
+                        .foregroundStyle(.secondary)
+                        .font(.caption)
+
+                    Button("Enable OP3 Analytics") {
+                        let binding = AnalyticsBinding(
+                            provider: "op3",
+                            prefixBaseURL: URL(string: "https://op3.dev/e")!
+                        )
+                        modelContext.insert(binding)
+                    }
+                    .accessibilityLabel("Enable OP3 analytics")
+                }
+
+                Section("Import Existing OP3 Data") {
+                    Text("If you already have OP3 analytics from another app, enter your Show UUID to link your existing data.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    TextField("OP3 Show UUID", text: $importShowUUID)
+                        .font(.caption.monospaced())
+                    Button("Import") {
+                        guard !importShowUUID.isEmpty else { return }
+                        let binding = AnalyticsBinding(
+                            provider: "op3",
+                            externalShowID: importShowUUID,
+                            prefixBaseURL: URL(string: "https://op3.dev/e")!
+                        )
+                        modelContext.insert(binding)
+                        importShowUUID = ""
+                    }
+                    .disabled(importShowUUID.isEmpty)
+                    .accessibilityLabel("Import existing OP3 analytics")
                 }
             }
         }

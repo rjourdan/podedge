@@ -66,9 +66,6 @@ private struct ShowEditorForm: View {
                     .fontWeight(.bold)
                 Text("by \(show.author)")
                     .foregroundStyle(.secondary)
-                Text("\(show.episodes.count) episode\(show.episodes.count == 1 ? "" : "s")")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
             }
             Spacer()
         }
@@ -156,6 +153,37 @@ private struct ShowEditorForm: View {
             LabeledContent("Remote Path") {
                 TextField("Feed Path", text: $show.feedRemotePath)
                     .textFieldStyle(.roundedBorder)
+            }
+
+            // Resolve the host binding to show the full RSS feed URL.
+            if let hostBinding = try? modelContext.fetch(
+                FetchDescriptor<HostBinding>(predicate: #Predicate { $0.id == show.hostBindingID })
+            ).first {
+                let feedURL = hostBinding.publicBaseURL
+                    .appendingPathComponent(show.feedRemotePath)
+                LabeledContent("RSS Feed URL") {
+                    HStack {
+                        Text(feedURL.absoluteString)
+                            .font(.caption.monospaced())
+                            .foregroundStyle(.secondary)
+                            .textSelection(.enabled)
+                            .lineLimit(2)
+                        Button {
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString(feedURL.absoluteString, forType: .string)
+                        } label: {
+                            Image(systemName: "doc.on.doc")
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Copy RSS feed URL")
+                    }
+                }
+            } else {
+                LabeledContent("RSS Feed URL") {
+                    Text("Configure a host in Settings to see the feed URL")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
             }
         }
     }

@@ -9,6 +9,7 @@ struct OnboardingView: View {
 
     @State private var step: OnboardingStep = .welcome
     @State private var keychainError: String?
+    @State private var isSavingHost = false
 
     // Show fields
     @State private var showTitle = ""
@@ -26,8 +27,10 @@ struct OnboardingView: View {
     @State private var secretAccessKey = ""
 
     // OP3 fields
-    @State private var op3PrefixURL = "https://op3.dev/e"
-    @State private var skipOP3 = false
+    @State private var enableOP3 = true
+    @State private var hasExistingOP3 = false
+    @State private var existingOP3ShowUUID = ""
+    @State private var op3Status: String?
 
     enum OnboardingStep: Int, CaseIterable {
         case welcome, show, s3, op3, models, done
@@ -66,18 +69,12 @@ struct OnboardingView: View {
         ScrollView {
             VStack(spacing: 16) {
                 switch step {
-                case .welcome:
-                    welcomeStep
-                case .show:
-                    showStep
-                case .s3:
-                    s3Step
-                case .op3:
-                    op3Step
-                case .models:
-                    modelsStep
-                case .done:
-                    doneStep
+                case .welcome: welcomeStep
+                case .show: showStep
+                case .s3: s3Step
+                case .op3: op3Step
+                case .models: modelsStep
+                case .done: doneStep
                 }
             }
             .padding(24)
@@ -121,7 +118,7 @@ struct OnboardingView: View {
             Text("S3 Hosting")
                 .font(.title2)
                 .fontWeight(.semibold)
-            Text("Configure your S3-compatible storage for hosting audio and feeds.")
+            Text("Podedge uploads your audio and RSS feed to an S3 bucket. See the [setup guide](https://github.com/rjourdan/podedge/blob/main/docs/user/s3-hosting-setup.md) for step-by-step instructions.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             if let keychainError {
@@ -135,7 +132,7 @@ struct OnboardingView: View {
                 .textFieldStyle(.roundedBorder)
             TextField("Region", text: $region)
                 .textFieldStyle(.roundedBorder)
-            TextField("Public Base URL", text: $publicBaseURL)
+            TextField("Public Base URL (e.g. https://d1234.cloudfront.net)", text: $publicBaseURL)
                 .textFieldStyle(.roundedBorder)
             TextField("Access Key ID", text: $accessKeyID)
                 .textFieldStyle(.roundedBorder)
@@ -146,16 +143,40 @@ struct OnboardingView: View {
 
     private var op3Step: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("OP3 Analytics")
+            Text("Download Analytics")
                 .font(.title2)
                 .fontWeight(.semibold)
-            Text("OP3 provides open podcast analytics. This step is optional.")
-                .font(.caption)
+
+            Text("Podedge uses OP3, a free open-source service, to count episode downloads without tracking your listeners.")
+                .font(.callout)
                 .foregroundStyle(.secondary)
-            Toggle("Skip OP3 setup", isOn: $skipOP3)
-            if !skipOP3 {
-                TextField("OP3 Prefix URL", text: $op3PrefixURL)
-                    .textFieldStyle(.roundedBorder)
+
+            Toggle("Enable download analytics", isOn: $enableOP3)
+                .accessibilityLabel("Enable OP3 download analytics")
+
+            if enableOP3 {
+                Text("Podedge will automatically register your show with OP3 when you publish your first episode. No account or sign-up needed.")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+
+                DisclosureGroup("Already using OP3?") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("If you're migrating from another app and already have OP3 analytics for this show, enter your existing OP3 Show UUID below. Podedge will link to your existing data instead of creating a new registration.")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                        Toggle("I have an existing OP3 Show UUID", isOn: $hasExistingOP3)
+                            .font(.caption)
+                        if hasExistingOP3 {
+                            TextField("OP3 Show UUID", text: $existingOP3ShowUUID)
+                                .textFieldStyle(.roundedBorder)
+                                .font(.caption.monospaced())
+                            Text("Find this at op3.dev under your show's dashboard.")
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                }
+                .font(.caption)
             }
         }
     }
@@ -196,6 +217,7 @@ struct OnboardingView: View {
                 Button("Back") {
                     withAnimation { step = OnboardingStep(rawValue: step.rawValue - 1) ?? .welcome }
                 }
+                .disabled(isSavingHost)
                 .accessibilityLabel("Previous step")
             }
             Spacer()
@@ -206,18 +228,37 @@ struct OnboardingView: View {
                 .buttonStyle(.borderedProminent)
                 .accessibilityLabel("Complete onboarding")
             } else {
-                Button("Next") {
-                    if step == .show { createShowIfNeeded() }
-                    if step == .s3 { createHostIfNeeded() }
-                    withAnimation { step = OnboardingStep(rawValue: step.rawValue + 1) ?? .done }
+                Button(isSavingHost ? "Saving…" : "Next") {
+                    advanceStep()
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(step == .show && (showTitle.isEmpty || showAuthor.isEmpty))
+                .disabled(nextDisabled)
                 .accessibilityLabel("Next step")
             }
         }
         .padding(16)
     }
+
+    private var nextDisabled: Bool {
+        if isSavingHost { return true }
+        if step == .show { return showTitle.isEmpty || showAuthor.isEmpty }
+        return false
+    }
+
+    private func advanceStep() {
+        switch step {
+        case .show:
+            createShowIfNeeded()
+            withAnimation { step = OnboardingStep(rawValue: step.rawValue + 1) ?? .done }
+        case .s3:
+            // Await keychain storage before advancing to prevent concurrent modelContext access.
+            saveHostThenAdvance()
+        default:
+            withAnimation { step = OnboardingStep(rawValue: step.rawValue + 1) ?? .done }
+        }
+    }
+
+    // MARK: - Data Creation
 
     private func createShowIfNeeded() {
         guard !showTitle.isEmpty else { return }
@@ -238,14 +279,21 @@ struct OnboardingView: View {
         modelContext.insert(show)
     }
 
-    private func createHostIfNeeded() {
-        guard !bucket.isEmpty, !accessKeyID.isEmpty, let baseURL = URL(string: publicBaseURL) else { return }
+    /// Stores S3 credentials in Keychain, inserts the HostBinding, then advances.
+    /// The step only advances after the insert completes — no concurrent modelContext access.
+    private func saveHostThenAdvance() {
+        guard !bucket.isEmpty, !accessKeyID.isEmpty, let baseURL = URL(string: publicBaseURL) else {
+            // No S3 configured — just skip ahead.
+            withAnimation { step = OnboardingStep(rawValue: step.rawValue + 1) ?? .done }
+            return
+        }
         let keychainRef = "host-\(UUID().uuidString)"
         let credential = HostCredential(
             accessKeyID: accessKeyID,
             secretAccessKey: secretAccessKey
         )
         keychainError = nil
+        isSavingHost = true
         Task {
             do {
                 let keychain = KeychainService()
@@ -258,16 +306,28 @@ struct OnboardingView: View {
                     keychainRef: keychainRef
                 )
                 modelContext.insert(binding)
+                isSavingHost = false
+                withAnimation { step = OnboardingStep(rawValue: step.rawValue + 1) ?? .done }
             } catch {
+                isSavingHost = false
                 keychainError = "Failed to store credentials: \(error.localizedDescription)"
             }
         }
     }
 
     private func finishOnboarding() {
-        if !skipOP3, let url = URL(string: op3PrefixURL) {
-            let binding = AnalyticsBinding(prefixBaseURL: url)
+        if enableOP3 {
+            let prefixURL = URL(string: "https://op3.dev/e")!
+            let binding = AnalyticsBinding(
+                provider: "op3",
+                externalShowID: hasExistingOP3 && !existingOP3ShowUUID.isEmpty
+                    ? existingOP3ShowUUID
+                    : nil,
+                prefixBaseURL: prefixURL
+            )
             modelContext.insert(binding)
+            // If no existing UUID, registration happens automatically on first publish
+            // via AnalyticsService → OP3AnalyticsProvider.register().
         }
         hasCompletedOnboarding = true
     }

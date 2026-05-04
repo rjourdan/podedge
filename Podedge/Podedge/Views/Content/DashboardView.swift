@@ -5,7 +5,7 @@ import PodedgeCore
 /// Default content view when no show or episode is selected.
 struct DashboardView: View {
     @Query(sort: \Show.title) private var shows: [Show]
-    @Query(filter: #Predicate<Episode> { $0.status.rawValue == "published" }) private var publishedEpisodes: [Episode]
+    @Query private var allEpisodes: [Episode]
     @Query(sort: \Job.createdAt, order: .reverse) private var recentJobs: [Job]
 
     var body: some View {
@@ -32,12 +32,12 @@ struct DashboardView: View {
     }
 
     private var statsGrid: some View {
-        let totalEpisodes = shows.reduce(0) { $0 + $1.episodes.count }
+        let publishedCount = allEpisodes.filter { $0.status == .published }.count
 
         return LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
             StatCard(title: "Shows", value: "\(shows.count)", icon: "mic.fill")
-            StatCard(title: "Episodes", value: "\(totalEpisodes)", icon: "waveform")
-            StatCard(title: "Published", value: "\(publishedEpisodes.count)", icon: "antenna.radiowaves.left.and.right")
+            StatCard(title: "Episodes", value: "\(allEpisodes.count)", icon: "waveform")
+            StatCard(title: "Published", value: "\(publishedCount)", icon: "antenna.radiowaves.left.and.right")
         }
     }
 

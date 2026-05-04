@@ -1,10 +1,11 @@
 # OP3 Analytics
 
-> Guide to enabling and using OP3 download analytics in Podedge.
+> How download analytics work in Podedge, and how to manage them.
 > **Audience:** podcasters who want to track downloads and listener geography.
 
 <!--
 Changelog
+- 2026-05-04: Rewrote for hands-off UX — auto-registration, no API key required, import path for existing OP3 data.
 - 2026-05-01: Initial draft.
 -->
 
@@ -20,70 +21,68 @@ OP3 gives you:
 
 All data is open and auditable. OP3 does not sell listener data.
 
-## How Podedge uses OP3
+## Setup — nothing to do
 
-When OP3 is enabled for a show, Podedge wraps every episode's enclosure URL in the RSS feed with the OP3 prefix:
+During onboarding, the **Download Analytics** step has a single toggle: **Enable download analytics**. It is on by default. Leave it on and continue — that's all.
 
-```
-https://op3.dev/e,pg=YOUR-SHOW-UUID/https://your-cdn.com/shows/my-show/episode-1.mp3
-```
+- No account to create
+- No API key to enter
+- No URL to configure
 
-The `pg=` parameter is your show's permanent UUID (the same `<podcast:guid>` Podedge assigns at show creation). This ties all downloads to your show in OP3's database.
+Podedge registers your show with OP3 automatically the first time you publish. After that, every episode's download URL is prefixed with `https://op3.dev/e` in your RSS feed, and stats start accumulating.
 
-Podedge polls OP3 every 6 hours and caches the results locally. You can view download trends in the **Analytics** view without an internet connection — the charts are built from the local cache.
+## Important: this setting is permanent
 
-## Important: the OP3 decision is permanent
+Once you publish your first episode with analytics enabled, the OP3 prefix is baked into your RSS feed. Disabling it later would change all your enclosure URLs, which breaks download-count continuity and may confuse podcast apps that have cached the old URLs.
 
-Once you publish your first episode with OP3 enabled, the prefix is baked into your RSS feed. Disabling OP3 later would change all your enclosure URLs, which breaks download-count continuity and may confuse podcast apps that have cached the old URLs.
-
-Podedge locks this setting after the first publish and shows a warning if you try to change it. **Decide before you publish episode 1.**
-
-## Setting up OP3
-
-### 1. Register at op3.dev
-
-1. Go to [op3.dev](https://op3.dev) and click **Sign in** (uses GitHub OAuth).
-2. After signing in, navigate to **API Keys** and create a new key.
-3. Copy the API key — you'll enter it in Podedge.
-
-### 2. Enter the API key in Podedge
-
-**During onboarding:** Step 4 of the onboarding wizard asks for your OP3 API key. Paste it in and click **Continue**.
-
-**After onboarding:** Go to **Settings → Analytics**, enter your OP3 API key, and click **Save**.
-
-Podedge stores the key in the macOS Keychain. It is never written to disk in plain text.
-
-### 3. Enable OP3 for a show
-
-1. Select your show in the sidebar.
-2. Click the **Settings** tab in the show detail view.
-3. Toggle **Enable OP3 analytics** on.
-4. Podedge registers your show with OP3 (one API call) and stores the resulting OP3 show ID.
-
-From this point on, every feed build for this show will prefix enclosure URLs with `https://op3.dev/e`.
+Podedge locks this setting after the first publish. **Decide before you publish episode 1.**
 
 ## Viewing analytics
 
-Open the **Analytics** view from the sidebar (the chart icon). You'll see:
+Open the **Analytics** view from the sidebar. You'll see:
 
 - **Show-level totals** — downloads and unique listeners over the selected time window
-- **Per-episode breakdown** — a bar chart of downloads per episode
+- **Per-episode breakdown** — downloads per episode
 - **App breakdown** — which podcast apps your listeners use
 - **Geographic breakdown** — downloads by country
 
-Data is refreshed from OP3 every 6 hours in the background. To force a refresh, click the **Refresh** button in the Analytics toolbar.
+Data is refreshed from OP3 every 6 hours in the background. To force a refresh, click **Refresh** in the Analytics toolbar.
+
+You can also view your data directly at [op3.dev](https://op3.dev) — a link is available in **Settings → Analytics**.
+
+## Managing OP3 after setup
+
+Go to **Settings → Analytics** to:
+
+- See your registration status: **Registered** (shows your OP3 Show UUID) or **Pending** (registers on first publish)
+- Open your op3.dev dashboard
+- Enable or disable analytics for the show
+- Import an existing OP3 Show UUID (see below)
+
+## Migrating from another podcast app
+
+If you were already using OP3 with a previous app, your historical download data is tied to an OP3 Show UUID. You can link Podedge to that existing UUID so your analytics history carries over.
+
+### Finding your existing OP3 Show UUID
+
+1. Go to [op3.dev](https://op3.dev) and sign in.
+2. Navigate to your show's page.
+3. The Show UUID appears in the URL and on the show detail page — it looks like `a1b2c3d4-e5f6-...`.
+
+### Importing the UUID into Podedge
+
+**During onboarding:** On the **Download Analytics** step, expand the **Already using OP3?** section and paste your Show UUID.
+
+**After onboarding:** Go to **Settings → Analytics**, find the **Import existing OP3 data** section, and paste your Show UUID there.
+
+Podedge will use this UUID when registering with OP3 on first publish, linking your new feed to your existing analytics history.
 
 ## Troubleshooting
 
 **No data showing after publishing**
-OP3 data typically appears within a few hours of the first download. If you see no data after 24 hours, verify that:
-- The OP3 API key in **Settings → Analytics** is correct
-- The show has OP3 enabled (show settings → Analytics tab)
-- At least one episode has been published (draft episodes are not tracked)
-
-**"OP3 registration failed" error**
-This usually means the API key is invalid or expired. Generate a new key at [op3.dev](https://op3.dev) and update it in **Settings → Analytics**.
+OP3 data typically appears within a few hours of the first download. If you see nothing after 24 hours, check that:
+- At least one episode has been published (drafts are not tracked)
+- The show's registration status in **Settings → Analytics** shows **Registered**
 
 **Analytics stopped updating**
-Check **Settings → Analytics** to confirm the API key is still valid. OP3 API keys do not expire automatically, but you may have regenerated one and forgotten to update Podedge.
+Check **Settings → Analytics** — if registration shows **Pending**, the first publish may not have completed successfully. Try publishing a new episode or contact support.

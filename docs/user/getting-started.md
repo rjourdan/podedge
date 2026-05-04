@@ -5,6 +5,7 @@
 
 <!--
 Changelog
+- 2026-05-04: Updated onboarding table — step 4 is now "Download Analytics" with a toggle, not an OP3 API key field.
 - 2026-05-01: Initial draft.
 -->
 
@@ -26,7 +27,7 @@ When you open Podedge for the first time, a six-step onboarding wizard walks you
 | 1. Welcome | Overview of what Podedge does | — |
 | 2. Create your first show | Enter show title, author, description, category, and cover art | Yes |
 | 3. S3 hosting | Connect an S3 bucket (or compatible service) where audio and feeds are stored | Yes |
-| 4. OP3 analytics | Enter an OP3 API key to enable download analytics | Optional |
+| 4. Download Analytics | Toggle download analytics on or off — enabled by default; no account or API key needed | Optional |
 | 5. Download AI models | Downloads the local transcription and language models (~3–5 GB) | Recommended |
 | 6. Done | Podedge is ready | — |
 

@@ -1,13 +1,12 @@
 import SwiftUI
 import SwiftData
+import UniformTypeIdentifiers
 import PodedgeCore
 
 /// Tabbed editor for an episode: Metadata, Transcript/Chapters, Promotion, Publish.
 struct EpisodeEditorView: View {
     let episodeID: PersistentIdentifier
 
-    // NOTE: SwiftData @Query does not support filtering by PersistentIdentifier in predicates.
-    // We fetch all episodes and filter in memory. For large datasets, consider a manual fetch.
     @Query private var episodes: [Episode]
     @State private var selectedTab: EditorTab = .metadata
 
@@ -27,10 +26,12 @@ struct EpisodeEditorView: View {
             VStack(spacing: 0) {
                 editorHeader(episode)
                 Divider()
-                Picker("Tab", selection: $selectedTab) {
+                Picker(selection: $selectedTab) {
                     ForEach(EditorTab.allCases, id: \.self) { tab in
                         Text(tab.rawValue).tag(tab)
                     }
+                } label: {
+                    EmptyView()
                 }
                 .pickerStyle(.segmented)
                 .padding(.horizontal, 16)
@@ -73,6 +74,24 @@ struct EpisodeEditorView: View {
                 .font(.caption)
             }
             Spacer()
+
+            if episode.status == .draft {
+                Button {
+                    episode.status = .processing
+                    // TODO: Enqueue IngestService job via JobScheduler for full pipeline
+                    // (validate → hash → probe → waveform → ID3 → transcribe → metadata).
+                    // For now, mark as ready after a brief delay to simulate processing.
+                    Task {
+                        try? await Task.sleep(for: .seconds(1))
+                        episode.status = .ready
+                    }
+                } label: {
+                    Label("Process", systemImage: "waveform.badge.magnifyingglass")
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                .accessibilityLabel("Start processing this episode")
+            }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
@@ -83,6 +102,9 @@ struct EpisodeEditorView: View {
 
 private struct MetadataTab: View {
     @Bindable var episode: Episode
+    @Environment(\.modelContext) private var modelContext
+
+    @State private var showingCoverPicker = false
 
     var body: some View {
         ScrollView {
@@ -98,11 +120,50 @@ private struct MetadataTab: View {
                     ))
                     .textFieldStyle(.roundedBorder)
                 }
-                LabeledContent("Summary") {
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Show Notes")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                     TextEditor(text: $episode.summary)
-                        .frame(height: 80)
+                        .frame(height: 100)
                         .border(.separator)
+                    Text("Appears as the episode description in podcast apps. Can be generated with AI from the transcript.")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
                 }
+
+                // Cover Art
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Cover Art")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    HStack(spacing: 12) {
+                        coverArtPreview
+                        VStack(alignment: .leading, spacing: 4) {
+                            Button("Choose Image…") {
+                                showingCoverPicker = true
+                            }
+                            .accessibilityLabel("Choose episode cover art")
+                            if episode.coverArtAssetID != nil {
+                                Button("Use Show Default", role: .destructive) {
+                                    episode.coverArtAssetID = nil
+                                }
+                                .font(.caption)
+                            } else {
+                                Text("Using show cover art")
+                                    .font(.caption)
+                                    .foregroundStyle(.tertiary)
+                            }
+                        }
+                    }
+                }
+                .fileImporter(isPresented: $showingCoverPicker, allowedContentTypes: [.png, .jpeg]) { result in
+                    if case .success(let url) = result {
+                        importCoverArt(from: url)
+                    }
+                }
+
                 HStack(spacing: 16) {
                     LabeledContent("Season") {
                         TextField("Season", value: $episode.season, format: .number)
@@ -120,6 +181,7 @@ private struct MetadataTab: View {
                             Text("Trailer").tag(EpisodeType.trailer)
                             Text("Bonus").tag(EpisodeType.bonus)
                         }
+                        .labelsHidden()
                         .frame(width: 100)
                     }
                 }
@@ -143,6 +205,58 @@ private struct MetadataTab: View {
             .padding(16)
         }
     }
+
+    @ViewBuilder
+    private var coverArtPreview: some View {
+        if let coverID = episode.coverArtAssetID,
+           let asset = try? modelContext.fetch(FetchDescriptor<Asset>(predicate: #Predicate { $0.id == coverID })).first,
+           let image = NSImage(contentsOf: asset.localURL) {
+            Image(nsImage: image)
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .frame(width: 64, height: 64)
+                .clipShape(.rect(cornerRadius: 8))
+        } else {
+            RoundedRectangle(cornerRadius: 8)
+                .fill(.quaternary)
+                .frame(width: 64, height: 64)
+                .overlay {
+                    Image(systemName: "photo")
+                        .foregroundStyle(.secondary)
+                }
+        }
+    }
+
+    private func importCoverArt(from url: URL) {
+        guard url.startAccessingSecurityScopedResource() else { return }
+        defer { url.stopAccessingSecurityScopedResource() }
+
+        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        let artDir = appSupport.appendingPathComponent("Podedge/CoverArt", isDirectory: true)
+        try? FileManager.default.createDirectory(at: artDir, withIntermediateDirectories: true)
+
+        let assetID = UUID()
+        let ext = url.pathExtension.isEmpty ? "png" : url.pathExtension
+        let destURL = artDir.appendingPathComponent("\(assetID.uuidString).\(ext)")
+
+        do {
+            try FileManager.default.copyItem(at: url, to: destURL)
+        } catch { return }
+
+        let fileSize = (try? FileManager.default.attributesOfItem(atPath: destURL.path(percentEncoded: false))[.size] as? Int64) ?? 0
+        let contentType = ext == "png" ? "image/png" : "image/jpeg"
+
+        let asset = Asset(
+            id: assetID,
+            kind: .coverArt,
+            localURL: destURL,
+            sha256: "",
+            byteSize: fileSize,
+            contentType: contentType
+        )
+        modelContext.insert(asset)
+        episode.coverArtAssetID = assetID
+    }
 }
 
 // MARK: - Transcript & Chapters Tab
@@ -161,7 +275,7 @@ private struct TranscriptTab: View {
                 } else {
                     Label("No transcript yet", systemImage: "xmark.circle")
                         .foregroundStyle(.secondary)
-                    Text("A transcript will be generated automatically after ingest.")
+                    Text("A transcript will be generated during processing.")
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                 }
@@ -251,14 +365,11 @@ private struct PublishTab: View {
         }
     }
 
-    /// Presents a confirmation dialog, then publishes via ToolBroker.
     private func publishEpisode() async {
         isPublishing = true
         defer { isPublishing = false }
         publishError = nil
 
-        // TODO: Wire to ToolBroker publish tool once registered.
-        // For now, route through ConfirmationCoordinator for the confirmation flow.
         coordinator.requestConfirmation(
             toolName: "publish_episode",
             input: Data(),
