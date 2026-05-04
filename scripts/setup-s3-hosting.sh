@@ -133,7 +133,6 @@ IAM_POLICY=$(cat <<EOF
             "Action": [
                 "s3:PutObject",
                 "s3:GetObject",
-                "s3:HeadObject",
                 "s3:DeleteObject",
                 "s3:ListBucket"
             ],

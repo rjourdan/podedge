@@ -186,7 +186,6 @@ This is the **Public Base URL** you'll enter in Podedge. CloudFront takes 5–10
             "Action": [
                 "s3:PutObject",
                 "s3:GetObject",
-                "s3:HeadObject",
                 "s3:DeleteObject",
                 "s3:ListBucket"
             ],
@@ -206,10 +205,9 @@ This is the **Public Base URL** you'll enter in Podedge. CloudFront takes 5–10
 | Permission | Purpose |
 |---|---|
 | `s3:PutObject` | Upload audio, transcripts, and the RSS feed |
-| `s3:GetObject` | Verify uploaded content |
-| `s3:HeadObject` | Check if a file exists before uploading (avoids duplicates) |
+| `s3:GetObject` | Verify uploaded content and check if a file exists (HEAD Object) |
 | `s3:DeleteObject` | Remove files when unpublishing |
-| `s3:ListBucket` | Lets HeadObject return 404 (not found) instead of 403 (denied) |
+| `s3:ListBucket` | Lets HEAD Object return 404 (not found) instead of 403 (denied) |
 
 **What's excluded and why:**
 
