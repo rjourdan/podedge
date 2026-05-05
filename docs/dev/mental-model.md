@@ -5,6 +5,8 @@
 
 <!--
 Changelog
+- 2026-05-05: v1 LLM stack clarified — MLX + Ollama, no cloud. See ADR 0002.
+- 2026-05-05: Codified the split data-access model (reads direct via @Query, writes via ToolBroker). See ADR 0001.
 - 2026-05-01: Initial draft. Based on PodedgeCore source + .kiro/idea/podedge-technical-design.md.
 - 2026-05-01: Confirmed ConfirmationCoordinator lives in the app target, not PodedgeCore. ToolBroker returns .needsConfirmation as a data signal.
 - 2026-05-01: Collapsed Action Layer into Service Layer — ToolBroker, ToolRegistry, and AuditLogService are services in PodedgeCore/Services/, not a separate layer.
@@ -25,6 +27,7 @@ Podedge is a macOS app that turns a dropped MP3 into a published podcast episode
 3. **Destructive actions require confirmation.** `ToolBroker` returns `.needsConfirmation(toolName:input:)` for destructive tools (publish, delete, unpublish) instead of executing them. The app-layer `ConfirmationCoordinator` presents the confirmation sheet and, on approval, calls `invokeConfirmed(toolNamed:input:caller:)`. The broker lives in `PodedgeCore`; the coordinator lives in the app target — this split keeps `PodedgeCore` free of SwiftUI.
 4. **Capabilities are protocols.** `PodcastHost`, `LLMProvider`, `TranscriptionEngine`, `AudioPipeline`, `DistributionTarget`, `AnalyticsProvider`, `PromotionRenderer`. Adding a new backend means writing a new conformer, not modifying existing code.
 5. **Work is durable jobs.** Long-running work (ingest, transcription, upload, distribution, analytics refresh) is enqueued in `JobScheduler`, which is SwiftData-backed and resumes across restarts.
+6. **Reads are free, writes are tools.** Views use `@Query` and `@Bindable` freely for reads and transient form state. Any committed write — create, update, delete, upload, publish, post — goes through `ToolBroker`. This is what makes the UI and the Assistant interchangeable callers. See [ADR 0001](../decisions/0001-ui-writes-through-toolbroker.md).
 
 ## The picture
 
@@ -50,7 +53,7 @@ flowchart TB
     subgraph Ext["Pluggable Extensions (PodedgeCore)"]
         Hosts["PodcastHost<br/>(S3Host)"]
         Targets["DistributionTarget<br/>(Apple/Spotify/Amazon/Index/Podping)"]
-        LLMs["LLMProvider<br/>(MLX)"]
+        LLMs["LLMProvider<br/>(MLX in-process + Ollama local)"]
         Engines["TranscriptionEngine<br/>(WhisperKit, whisper.cpp)"]
     end
     Models["SwiftData Models<br/>Show, Episode, Asset, Job, HostBinding, ..."]
@@ -111,10 +114,15 @@ sequenceDiagram
 | 4 | All persistence goes through `LibraryStore` | Code review |
 | 5 | Long-running work is a `Job`, not a loose `Task` | Code review |
 | 6 | S3 uploads are idempotent (sha256-keyed HEAD-before-PUT) | `S3Host` |
+| 7 | UI writes go through `ToolBroker`; reads use `@Query` / `@Bindable` directly | Code review + spec conformance |
+
+### Data access pattern
+
+Views read SwiftData models directly via `@Query` and `@Bindable` — this is Apple's idiomatic pattern and is encouraged. Any write that a user would recognise as an action (save, publish, delete, post) must go through `ToolBroker`. This split is what allows the Assistant and the UI to be interchangeable callers with identical audit and confirmation behaviour. See [ADR 0001](../decisions/0001-ui-writes-through-toolbroker.md) for the full rationale.
 
 ## If you remember only three things
 
-1. **UI → ToolBroker → Service → Model.** Arrows never reverse. The broker is the one-way valve.
+1. **Reads: UI → `@Query` → Model. Writes: UI → ToolBroker → Service → Model.** Arrows never reverse. The broker is the one-way valve for writes; `@Query` is the live-update channel for reads.
 2. **New capability? New protocol conformer.** Don't modify existing services; write a new `PodcastHost`, `DistributionTarget`, or `LLMProvider`.
 3. **Nothing persistent happens outside a Job.** If it takes more than a few hundred milliseconds or has to survive a restart, it belongs in `JobScheduler`.
 

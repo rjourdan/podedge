@@ -1,51 +1,65 @@
 import Foundation
 import SwiftData
+import Testing
 
 @testable import PodedgeCore
 
-/// Shared test container that is created once and reused across all SwiftData tests.
+/// Provides SwiftData containers for tests.
 ///
-/// SwiftData's `ModelContainer` crashes (signal trap) when multiple containers
-/// are created in the same process, even with unique names or in-memory stores.
-/// Using a single shared container avoids this entirely.
+/// Each test suite that uses SwiftData should call ``container(for:)`` with a
+/// unique label. This returns a dedicated ``ModelContainer`` backed by its own
+/// on-disk store, eliminating cross-suite interference when suites run in parallel.
 enum TestDatabase {
-    /// The shared container, created lazily on first access.
+    /// The shared container, used by suites that need a stable container reference
+    /// (e.g. ``JobScheduler`` which takes a ``ModelContainer`` at init).
     @MainActor
-    static let shared: ModelContainer = {
+    static let shared: ModelContainer = container(for: "shared")
+
+    /// Returns a container for the given label, creating it on first access.
+    ///
+    /// Containers are cached so that repeated calls with the same label within
+    /// a suite return the same container.
+    @MainActor
+    static func container(for label: String) -> ModelContainer {
+        if let existing = containers[label] { return existing }
         let dir = FileManager.default.temporaryDirectory
             .appendingPathComponent("PodedgeCoreTests", isDirectory: true)
         try! FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        let url = dir.appendingPathComponent("shared-\(ProcessInfo.processInfo.processIdentifier).store")
-        // Remove any leftover file from a previous run of this process.
+        let url = dir.appendingPathComponent("\(label)-\(ProcessInfo.processInfo.processIdentifier).store")
         try? FileManager.default.removeItem(at: url)
-        return try! PodedgeSchema.makeContainer(url: url)
-    }()
+        let c = try! PodedgeSchema.makeContainer(url: url)
+        containers[label] = c
+        return c
+    }
 
-    /// Deletes all model objects from the shared container's main context.
-    ///
-    /// Call at the start of each test to ensure a clean slate. Deletes objects
-    /// individually (not batch) to respect cascade rules and inverse relationships.
     @MainActor
-    static func reset() throws {
-        let context = shared.mainContext
+    private static var containers: [String: ModelContainer] = [:]
+
+    /// Deletes all model objects from the given container's main context.
+    ///
+    /// Call at the start of each test to ensure a clean slate.
+    @MainActor
+    static func reset(_ container: ModelContainer) throws {
+        let context = container.mainContext
 
         // Delete leaf entities first, then parents.
-        // AnalyticsSnapshot → Episode, Show
         for obj in try context.fetch(FetchDescriptor<AnalyticsSnapshot>()) { context.delete(obj) }
-        // DistributionRecord → Show
         for obj in try context.fetch(FetchDescriptor<DistributionRecord>()) { context.delete(obj) }
-        // Episode → Show
         for obj in try context.fetch(FetchDescriptor<Episode>()) { context.delete(obj) }
-        // Independent entities
         for obj in try context.fetch(FetchDescriptor<Job>()) { context.delete(obj) }
         for obj in try context.fetch(FetchDescriptor<Asset>()) { context.delete(obj) }
         for obj in try context.fetch(FetchDescriptor<AgentAuditEntry>()) { context.delete(obj) }
         for obj in try context.fetch(FetchDescriptor<HostBinding>()) { context.delete(obj) }
         for obj in try context.fetch(FetchDescriptor<AnalyticsBinding>()) { context.delete(obj) }
-        // Parent entity last
         for obj in try context.fetch(FetchDescriptor<Show>()) { context.delete(obj) }
 
         try context.save()
+    }
+
+    /// Deletes all model objects from the shared container's main context.
+    @MainActor
+    static func reset() throws {
+        try reset(shared)
     }
 }
 

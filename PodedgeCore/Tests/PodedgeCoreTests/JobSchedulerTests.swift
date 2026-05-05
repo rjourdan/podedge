@@ -71,7 +71,7 @@ struct JobSchedulerPureLogicTests {
     @Test("StubJobHandler records executed job IDs")
     func stubHandlerRecords() async throws {
         let handler = StubJobHandler(kind: .ingest)
-        let container = await TestDatabase.shared
+        let container = await TestDatabase.container(for: "jobscheduler")
         let jobID = UUID()
         try await handler.execute(jobID: jobID, container: container)
         #expect(handler.callCount == 1)
@@ -81,7 +81,7 @@ struct JobSchedulerPureLogicTests {
     @Test("StubJobHandler throws when configured")
     func stubHandlerThrows() async throws {
         let handler = StubJobHandler(kind: .ingest, shouldThrow: true)
-        let container = await TestDatabase.shared
+        let container = await TestDatabase.container(for: "jobscheduler")
         let jobID = UUID()
         do {
             try await handler.execute(jobID: jobID, container: container)
@@ -94,7 +94,7 @@ struct JobSchedulerPureLogicTests {
     @Test("StubJobHandler handles multiple calls")
     func stubHandlerMultipleCalls() async throws {
         let handler = StubJobHandler(kind: .upload)
-        let container = await TestDatabase.shared
+        let container = await TestDatabase.container(for: "jobscheduler")
         let id1 = UUID()
         let id2 = UUID()
         try await handler.execute(jobID: id1, container: container)
@@ -111,8 +111,8 @@ struct JobSchedulerPureLogicTests {
 struct JobSchedulerIntegrationTests {
 
     private func makeScheduler() throws -> (JobScheduler, ModelContainer) {
-        try TestDatabase.reset()
-        let container = TestDatabase.shared
+        let container = TestDatabase.container(for: "jobscheduler")
+        try TestDatabase.reset(container)
         let scheduler = JobScheduler(modelContainer: container)
         return (scheduler, container)
     }
@@ -251,8 +251,8 @@ struct JobSchedulerIntegrationTests {
 
     @Test("Jobs exceeding maxAttempts are marked failed")
     func maxAttemptsExceeded() async throws {
-        try TestDatabase.reset()
-        let container = TestDatabase.shared
+        let container = TestDatabase.container(for: "jobscheduler")
+        try TestDatabase.reset(container)
         let scheduler = JobScheduler(modelContainer: container, maxAttempts: 3)
 
         let job = Job(kind: .ingest, targetID: UUID(), attempts: 3)

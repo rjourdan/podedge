@@ -1,395 +1,330 @@
-# Podedge Implementation Tracker
+# Podedge v1 Implementation Tracker — Spec-organized
 
-Generated: 2026-04-27
-Last updated: 2026-05-01 (Xcode project created, app builds)
+Last updated: 2026-05-05
 
-## Agent Assignments
+## Pre-v1 (Historic)
 
-| Agent | Role | Work Streams |
-|---|---|---|
-| `swift-swe` | Primary implementer — services, models, protocols, pipelines | WS2–WS7 |
-| `kiro_default` | UI layer, project setup, integration, prompts | WS1, WS8 |
-| `code-review-agent` | Review after each work stream completes | All |
+Work streams WS1–WS8 produced a compilable app shell with fully unit-tested PodedgeCore services. The gap: **the app target never instantiates any service**. No pipeline is wired end-to-end.
 
-> **Note:** This is a Swift/SwiftUI macOS project. `swift-swe` handles all
-> non-UI PodedgeCore code (models, services, protocols, hosts, analytics,
-> distribution). `kiro_default` handles Xcode project setup, SwiftUI views,
-> onboarding, and integration. `code-review-agent` reviews completed streams.
+| Work Stream | What Was Built | Gap |
+|-------------|---------------|-----|
+| WS1–WS3 | Xcode project, PodedgeCore package, all 7 extension-point protocols, SwiftData models, LibraryStore, JobScheduler, KeychainService, Logger, ToolRegistry, ToolBroker, AuditLogService | No concrete AudioPipeline; no TranscriptionEngine; ToolRegistry empty at runtime |
+| WS4–WS6 | MP3Validator, AudioProber, WaveformGenerator, ID3TagService, IngestService, TranscriptionService (protocol only), MLXLLMProvider (stub), LLMService, MetadataGenerationService, S3Host, HostService, FeedBuilder, FeedXMLSerializer, FeedValidator, OP3AnalyticsProvider, AnalyticsService, DistributionService, all distribution targets | MLXLLMProvider throws on every call; no WhisperKitTranscriptionEngine; DefaultAudioPipeline not composed; no JobHandlers |
+| WS7–WS8 | PublishService, PublishDryRun, PublishArtifactBuilder, SocialBlurbRenderer, all SwiftUI views (MainWindowView, EpisodeEditorView, SettingsView, OnboardingView, etc.), ConfirmationCoordinator, ToolButton, NotificationService, UpdateChecker | Publish button not wired; EpisodeListView.importAudio bypasses IngestService; no AppServices composition root; no Assistant |
+
+**Summary gap:** App shell compiles but no pipeline wiring; MLXLLMProvider stub; no TranscriptionEngine; no real AudioPipeline; empty ToolRegistry at runtime.
+
+---
+
+## v1 Specs
+
+
+### Spec 01 — Composition Root
+
+[requirements.md](.kiro/specs/01-composition-root/requirements.md) · [design.md](.kiro/specs/01-composition-root/design.md)
+
+**Status:** ⬜ Not started  
+**Dependencies:** None (prerequisite for all other specs)
+
+| ID | Task | File(s) | Status |
+|----|------|---------|--------|
+| 01.1 | Audit and set `public` on all PodedgeCore types used by the app | Multiple `PodedgeCore/Sources/PodedgeCore/Services/*.swift` | ⬜ |
+| 01.2 | Create `AppServices` class with all service properties | `Podedge/Podedge/AppServices.swift` | ⬜ |
+| 01.3 | Implement `AppServices.bootstrap()` (handler + tool registration, scheduler start) | `Podedge/Podedge/AppServices.swift` | ⬜ |
+| 01.4 | Add `AppServicesKey` environment key and `EnvironmentValues` extension | `Podedge/Podedge/AppServices.swift` | ⬜ |
+| 01.5 | Rewrite `PodedgeApp` to construct `AppServices` and inject via environment | `Podedge/Podedge/PodedgeApp.swift` | ⬜ |
+| 01.6 | Add `handler(for:)` method to `JobScheduler` | `PodedgeCore/Sources/PodedgeCore/Services/JobScheduler.swift` | ⬜ |
+| 01.7 | Write `AppServicesTests` (all job kinds have handlers, bootstrap idempotent) | `PodedgeTests/AppServicesTests.swift` | ⬜ |
+
+---
+
+### Spec 02 — Audio Ingest
+
+[requirements.md](.kiro/specs/02-audio-ingest/requirements.md) · [design.md](.kiro/specs/02-audio-ingest/design.md)
+
+**Status:** ⬜ Not started  
+**Dependencies:** Spec 01
+
+| ID | Task | File(s) | Status |
+|----|------|---------|--------|
+| 02.1 | Create `DefaultAudioPipeline` composing MP3Validator, AudioProber, WaveformGenerator, ID3TagService, CryptoKit SHA-256 | `PodedgeCore/Sources/PodedgeCore/Services/DefaultAudioPipeline.swift` | ⬜ |
+| 02.2 | Wire `DefaultAudioPipeline` into `AppServices` | `Podedge/Podedge/AppServices.swift` | ⬜ |
+| 02.3 | Replace `EpisodeListView.importAudio` with `appServices.ingestService.ingest(fileURL:show:)` | `Podedge/Podedge/Views/Sidebar/EpisodeListView.swift` | ⬜ |
+| 02.4 | Add ingest error alert to `EpisodeListView` | `Podedge/Podedge/Views/Sidebar/EpisodeListView.swift` | ⬜ |
+| 02.5 | Write `DefaultAudioPipelineTests` (sha256 property test, probe, waveform) | `PodedgeCoreTests/DefaultAudioPipelineTests.swift` | ⬜ |
+| 02.6 | Write `IngestServiceIntegrationTests` (creates episode+assets, enqueues jobs, failure cleanup) | `PodedgeCoreTests/IngestServiceIntegrationTests.swift` | ⬜ |
+
+---
+
+### Spec 03 — Transcription
+
+[requirements.md](.kiro/specs/03-transcription/requirements.md) · [design.md](.kiro/specs/03-transcription/design.md)
+
+**Status:** ⬜ Not started  
+**Dependencies:** Spec 01, Spec 02
+
+| ID | Task | File(s) | Status |
+|----|------|---------|--------|
+| 03.1 | Add WhisperKit to `Package.swift` | `PodedgeCore/Package.swift` | ⬜ |
+| 03.2 | Create `WhisperKitTranscriptionEngine` actor | `PodedgeCore/Sources/PodedgeCore/Services/WhisperKitTranscriptionEngine.swift` | ⬜ |
+| 03.3 | Create `TranscribeJobHandler` | `PodedgeCore/Sources/PodedgeCore/Services/TranscribeJobHandler.swift` | ⬜ |
+| 03.4 | Register `TranscribeJobHandler` in `AppServices.bootstrap()` | `Podedge/Podedge/AppServices.swift` | ⬜ |
+| 03.5 | Update `OnboardingView` step 4 with model download list and progress | `Podedge/Podedge/Views/Onboarding/OnboardingView.swift` | ⬜ |
+| 03.6 | Update `EpisodeEditorView` transcript tab to show VTT content or progress | `Podedge/Podedge/Views/Content/EpisodeEditorView.swift` | ⬜ |
+| 03.7 | Write `WhisperKitTranscriptionEngineTests` and `TranscribeJobHandlerTests` | `PodedgeCoreTests/WhisperKitTranscriptionEngineTests.swift`, `TranscribeJobHandlerTests.swift` | ⬜ |
+
+---
+
+### Spec 04 — Local LLM Providers (MLX + Ollama)
+
+[requirements.md](.kiro/specs/04-local-llm-mlx/requirements.md) · [design.md](.kiro/specs/04-local-llm-mlx/design.md)
+
+**Status:** ⬜ Not started  
+**Dependencies:** Spec 01
+
+| ID | Task | File(s) | Status |
+|----|------|---------|--------|
+| 04.1 | Add `mlx-swift-examples` to `Package.swift` | `PodedgeCore/Package.swift` | ⬜ |
+| 04.2 | Replace stub `MLXLLMProvider` with real MLX inference using `mlx-swift-examples` and support for the 3 bundled MLX model IDs (Gemma 4 E4B, Qwen 3 8B DWQ, Mistral Small 24B) | `PodedgeCore/Sources/PodedgeCore/LLM/MLXLLMProvider.swift` | ⬜ |
+| 04.3 | Create `LLMModelInfo` struct | `PodedgeCore/Sources/PodedgeCore/Models/LLMModelInfo.swift` | ⬜ |
+| 04.4 | Add `availableLLMModels()` and `downloadLLMModel(named:onProgress:)` to `ModelManager` | `PodedgeCore/Sources/PodedgeCore/Services/ModelManager.swift` | ⬜ |
+| 04.5 | Wire active provider (MLX or Ollama based on user selection from UserDefaults) into `AppServices` | `Podedge/Podedge/AppServices.swift` | ⬜ |
+| 04.6 | ~~Update `OnboardingView` to show LLM model in download list~~ — replaced by 04.13 | — | ~~⬜~~ |
+| 04.7 | Write `MLXLLMProviderTests` (token counts, schema-constrained output, not-loaded throws) | `PodedgeCoreTests/MLXLLMProviderTests.swift` | ⬜ |
+| 04.8 | Create `OllamaLLMProvider` | `PodedgeCore/Sources/PodedgeCore/LLM/OllamaLLMProvider.swift` | ⬜ |
+| 04.9 | Create `OllamaModelInfo` type | `PodedgeCore/Sources/PodedgeCore/Models/OllamaModelInfo.swift` | ⬜ |
+| 04.10 | Extend `ModelManager` with `availableOllamaModels(baseURL:)` | `PodedgeCore/Sources/PodedgeCore/Services/ModelManager.swift` | ⬜ |
+| 04.11 | Add `ollamaUnreachable` case to `PodedgeError` | `PodedgeCore/Sources/PodedgeCore/Models/PodedgeError.swift` | ⬜ |
+| 04.12 | Create `AIProviderPickerView` with 4 options + guidance strings | `Podedge/Podedge/Views/Onboarding/AIProviderPickerView.swift` | ⬜ |
+| 04.13 | Rewrite `OnboardingView` step 4 to use `AIProviderPickerView` | `Podedge/Podedge/Views/Onboarding/OnboardingView.swift` | ⬜ |
+| 04.14 | Add LLM Providers tab to `SettingsView` | `Podedge/Podedge/Views/Settings/SettingsView.swift` | ⬜ |
+| 04.15 | Write `OllamaLLMProviderTests` (URLProtocol stubs, `/api/tags`, `/api/chat`, tool-use) | `PodedgeCoreTests/OllamaLLMProviderTests.swift` | ⬜ |
+
+
+### Spec 05 — Metadata Generation
+
+[requirements.md](.kiro/specs/05-metadata-generation/requirements.md) · [design.md](.kiro/specs/05-metadata-generation/design.md)
+
+**Status:** ⬜ Not started  
+**Dependencies:** Spec 03, Spec 04
+
+| ID | Task | File(s) | Status |
+|----|------|---------|--------|
+| 05.1 | Create `EpisodeSuggestions` SwiftData model | `PodedgeCore/Sources/PodedgeCore/Models/EpisodeSuggestions.swift` | ⬜ |
+| 05.2 | Add `EpisodeSuggestions` to `PodedgeSchema` | `PodedgeCore/Sources/PodedgeCore/Models/ModelContainerSetup.swift` | ⬜ |
+| 05.3 | Create `GenerateMetadataJobHandler` | `PodedgeCore/Sources/PodedgeCore/Services/GenerateMetadataJobHandler.swift` | ⬜ |
+| 05.4 | Register `GenerateMetadataJobHandler` in `AppServices.bootstrap()` | `Podedge/Podedge/AppServices.swift` | ⬜ |
+| 05.5 | Update `EpisodeEditorView` Metadata tab with suggestions + Apply/Regenerate | `Podedge/Podedge/Views/Content/EpisodeEditorView.swift` | ⬜ |
+| 05.6 | Update `EpisodeEditorView` Chapters tab with suggested chapters + Apply All | `Podedge/Podedge/Views/Content/EpisodeEditorView.swift` | ⬜ |
+| 05.7 | Update `PromotionTabView` to show blurbs from `EpisodeSuggestions` | `Podedge/Podedge/Views/Components/PromotionTabView.swift` | ⬜ |
+| 05.8 | Write `GenerateMetadataJobHandlerTests` | `PodedgeCoreTests/GenerateMetadataJobHandlerTests.swift` | ⬜ |
+
+---
+
+### Spec 06 — Publish Pipeline
+
+[requirements.md](.kiro/specs/06-publish-pipeline/requirements.md) · [design.md](.kiro/specs/06-publish-pipeline/design.md)
+
+**Status:** ⬜ Not started  
+**Dependencies:** Spec 01, Spec 02
+
+| ID | Task | File(s) | Status |
+|----|------|---------|--------|
+| 06.1 | Create `PublishJobHandler` | `PodedgeCore/Sources/PodedgeCore/Services/PublishJobHandler.swift` | ⬜ |
+| 06.2 | Create `UploadJobHandler` | `PodedgeCore/Sources/PodedgeCore/Services/UploadJobHandler.swift` | ⬜ |
+| 06.3 | Create `OP3PollJobHandler` | `PodedgeCore/Sources/PodedgeCore/Services/OP3PollJobHandler.swift` | ⬜ |
+| 06.4 | Create `NotificationServiceProtocol` | `PodedgeCore/Sources/PodedgeCore/Services/NotificationServiceProtocol.swift` | ⬜ |
+| 06.5 | Create `BGTaskCoordinator` and register `dev.podedge.scheduled-publish` | `Podedge/Podedge/Services/BGTaskCoordinator.swift` | ⬜ |
+| 06.6 | Add `BGTaskSchedulerPermittedIdentifiers` to `Info.plist` | `Podedge/Podedge/Info.plist` | ⬜ |
+| 06.7 | Register all three job handlers in `AppServices.bootstrap()` | `Podedge/Podedge/AppServices.swift` | ⬜ |
+| 06.8 | Wire Publish tab: Preview Publish sheet, ToolButton for publish/unpublish, scheduledFor DatePicker | `Podedge/Podedge/Views/Content/EpisodeEditorView.swift` | ⬜ |
+| 06.9 | Write `PublishJobHandlerTests` and `OP3PollJobHandlerTests` | `PodedgeCoreTests/PublishJobHandlerTests.swift`, `OP3PollJobHandlerTests.swift` | ⬜ |
+
+---
+
+### Spec 07 — Social Posting
+
+[requirements.md](.kiro/specs/07-social-posting/requirements.md) · [design.md](.kiro/specs/07-social-posting/design.md)
+
+**Status:** ⬜ Not started  
+**Dependencies:** Spec 05, Spec 06
+
+| ID | Task | File(s) | Status |
+|----|------|---------|--------|
+| 07.1 | Create `SocialPostingTarget` protocol and supporting types | `PodedgeCore/Sources/PodedgeCore/Services/SocialPostingTarget.swift` | ⬜ |
+| 07.2 | Create `BlueskyTarget` (AT Protocol) | `PodedgeCore/Sources/PodedgeCore/Social/BlueskyTarget.swift` | ⬜ |
+| 07.3 | Create `MastodonTarget` (/api/v1/statuses) | `PodedgeCore/Sources/PodedgeCore/Social/MastodonTarget.swift` | ⬜ |
+| 07.4 | Create `CopyPasteTarget` for X, LinkedIn, Threads | `PodedgeCore/Sources/PodedgeCore/Social/CopyPasteTarget.swift` | ⬜ |
+| 07.5 | Create `SocialPostingService` actor | `PodedgeCore/Sources/PodedgeCore/Services/SocialPostingService.swift` | ⬜ |
+| 07.6 | Add `socialPostFailed` to `PodedgeError` | `PodedgeCore/Sources/PodedgeCore/Models/PodedgeError.swift` | ⬜ |
+| 07.7 | Add Bluesky and Mastodon Keychain accessors | `PodedgeCore/Sources/PodedgeCore/Services/KeychainService.swift` | ⬜ |
+| 07.8 | Wire `PromotionTabView` Post/Copy buttons | `Podedge/Podedge/Views/Components/PromotionTabView.swift` | ⬜ |
+| 07.9 | Add Social accounts tab to `SettingsView` | `Podedge/Podedge/Views/Settings/SettingsView.swift` | ⬜ |
+| 07.10 | Write `BlueskyTargetTests` and `MastodonTargetTests` (URLProtocol stubs) | `PodedgeCoreTests/BlueskyTargetTests.swift`, `MastodonTargetTests.swift` | ⬜ |
+
+---
+
+### Spec 08 — Tool Registry Wiring
+
+[requirements.md](.kiro/specs/08-tool-registry-wiring/requirements.md) · [design.md](.kiro/specs/08-tool-registry-wiring/design.md)
+
+**Status:** ⬜ Not started  
+**Dependencies:** Spec 01, Spec 06, Spec 07
+
+| ID | Task | File(s) | Status |
+|----|------|---------|--------|
+| 08.1 | Create `ToolPayloads.swift` with all input/output types | `PodedgeCore/Sources/PodedgeCore/Services/ToolPayloads.swift` | ⬜ |
+| 08.2 | Create tool implementation files (LibraryTools, FeedTools, EpisodeTools, etc.) | `PodedgeCore/Sources/PodedgeCore/Tools/*.swift` | ⬜ |
+| 08.3 | Add `AuditLogService` dependency to `ToolBroker`; write audit entries on every invocation | `PodedgeCore/Sources/PodedgeCore/Services/ToolBroker.swift` | ⬜ |
+| 08.4 | Register all 23 tools in `AppServices.bootstrap()` | `Podedge/Podedge/AppServices.swift` | ⬜ |
+| 08.5 | Replace direct service calls with `ToolButton` in `EpisodeEditorView`, `ShowListView`, `EpisodeListView`, `PromotionTabView` | Multiple view files | ⬜ |
+| 08.6 | Create `AuditLogView` and add to `SettingsView` | `Podedge/Podedge/Views/Settings/AuditLogView.swift` | ⬜ |
+| 08.7 | Write `ToolRegistryWiringTests` (all tools registered, destructive audit, duplicate replacement) | `PodedgeCoreTests/ToolRegistryWiringTests.swift` | ⬜ |
+
+
+### Spec 09 — Assistant Core
+
+[requirements.md](.kiro/specs/09-assistant-core/requirements.md) · [design.md](.kiro/specs/09-assistant-core/design.md)
+
+**Status:** ⬜ Not started  
+**Dependencies:** Spec 08
+
+| ID | Task | File(s) | Status |
+|----|------|---------|--------|
+| 09.1 | Extend `LLMProvider` protocol with `capabilities`, `complete(tools:)`, `stream(tools:)`, `LLMStreamEvent` | `PodedgeCore/Sources/PodedgeCore/Services/LLMProvider.swift` | ⬜ |
+| 09.2 | Update `MLXLLMProvider` to implement extended protocol (prompt-emulated tool use) | `PodedgeCore/Sources/PodedgeCore/LLM/MLXLLMProvider.swift` | ⬜ |
+| 09.3 | Update `OllamaLLMProvider` to implement extended protocol (native tool-use + prompt-emulated fallback) | `PodedgeCore/Sources/PodedgeCore/LLM/OllamaLLMProvider.swift` | ⬜ |
+| 09.4 | Create `AssistantController` (`@MainActor @Observable`) with rate-limit enforcement | `PodedgeCore/Sources/PodedgeCore/Services/AssistantController.swift` | ⬜ |
+| 09.5 | Create `AssistantMessage` and `ToolCallRecord` value types | `PodedgeCore/Sources/PodedgeCore/Services/AssistantMessage.swift` | ⬜ |
+| 09.6 | Create `Router` (keyword rules + LLM classifier fallback) | `PodedgeCore/Sources/PodedgeCore/Services/Router.swift` | ⬜ |
+| 09.7 | Create `EscapeHatchResponder` | `PodedgeCore/Sources/PodedgeCore/Services/EscapeHatchResponder.swift` | ⬜ |
+| 09.8 | Create `AssistantPaneView` with conversation list, input, tool-call rows, provider label | `Podedge/Podedge/Views/Assistant/AssistantPaneView.swift` | ⬜ |
+| 09.9 | Add ⌘K shortcut and pane visibility preference to `MainWindowView` | `Podedge/Podedge/Views/MainWindowView.swift` | ⬜ |
+| 09.10 | Add Assistant-specific settings to LLM Providers tab (per-session rate limits UI) | `Podedge/Podedge/Views/Settings/SettingsView.swift` | ⬜ |
+| 09.11 | Wire `AssistantController` and `Router` into `AppServices` | `Podedge/Podedge/AppServices.swift` | ⬜ |
+| 09.12 | Write `RouterTests` and `AssistantControllerTests` | `PodedgeCoreTests/RouterTests.swift`, `AssistantControllerTests.swift` | ⬜ |
+
+---
+
+### Spec 10 — Specialist Agents
+
+[requirements.md](.kiro/specs/10-specialist-agents/requirements.md) · [design.md](.kiro/specs/10-specialist-agents/design.md)
+
+**Status:** ⬜ Not started  
+**Dependencies:** Spec 09
+
+| ID | Task | File(s) | Status |
+|----|------|---------|--------|
+| 10.1 | Create `SpecialistAgent` protocol and `AgentContext`, `AgentResponse` types | `PodedgeCore/Sources/PodedgeCore/Services/SpecialistAgent.swift` | ⬜ |
+| 10.2 | Create `PromoterAgent` with tool whitelist and system prompt | `PodedgeCore/Sources/PodedgeCore/Agents/PromoterAgent.swift` | ⬜ |
+| 10.3 | Create `PublishAssistantAgent` with tool whitelist and system prompt | `PodedgeCore/Sources/PodedgeCore/Agents/PublishAssistantAgent.swift` | ⬜ |
+| 10.4 | Create `CapabilityTierService` with known-models lookup table | `PodedgeCore/Sources/PodedgeCore/Services/CapabilityTierService.swift` | ⬜ |
+| 10.5 | Create `PerShowGuidesService` (reads per-show markdown files) | `PodedgeCore/Sources/PodedgeCore/Services/PerShowGuidesService.swift` | ⬜ |
+| 10.6 | Write agent prompt resources (`_safety.md`, `_escape-hatch.md`, `promoter.md`, `publish-assistant.md`) | `PodedgeCore/Sources/PodedgeCore/Resources/Agents/` | ⬜ |
+| 10.7 | Add agent registry to `AssistantController`; register both agents | `PodedgeCore/Sources/PodedgeCore/Services/AssistantController.swift`, `Podedge/Podedge/AppServices.swift` | ⬜ |
+| 10.8 | Add `allowedTools` to `ToolCaller` for per-agent whitelist enforcement in `ToolBroker` | `PodedgeCore/Sources/PodedgeCore/Services/ToolDefinition.swift`, `ToolBroker.swift` | ⬜ |
+| 10.9 | Write `PromoterAgentTests`, `PublishAssistantAgentTests`, `CapabilityTierServiceTests`, `PerShowGuidesServiceTests` | `PodedgeCoreTests/` | ⬜ |
+
 
 ---
 
 ## Dependency Graph
 
 ```
-WS1 (Foundation) ──► WS2 (Domain + Action Layer) ──► WS3 (Protocols + Infra)
-                                                          │
-                                              ┌───────────┼───────────┐
-                                              ▼           ▼           ▼
-                                        WS4 (Ingest) WS5 (Local AI) WS6 (Host/Feed/Dist)
-                                              │           │           │
-                                              └───────────┼───────────┘
-                                                          ▼
-                                                   WS7 (Publish + Promo)
-                                                          │
-                                                          ▼
-                                                   WS8 (UI + Integration)
-                                                          │
-                                                          ▼
-                                                   WS9 (v1.1 — Assistant + BYO-AI)
-                                                          │
-                                                          ▼
-                                                   WS10 (Deferred)
+01 (Composition Root)
+├── 02 (Audio Ingest)
+│   └── 03 (Transcription)
+│       └── 05 (Metadata Generation) ←── 04 (Local LLM)
+│           └── 07 (Social Posting)
+│               └── 08 (Tool Registry Wiring)
+│                   └── 09 (Assistant Core)
+│                       └── 10 (Specialist Agents)
+├── 04 (Local LLM) [parallel with 02/03]
+└── 06 (Publish Pipeline) [parallel with 03/04/05]
+    └── 07 (Social Posting)
+        └── 08 (Tool Registry Wiring)
 ```
 
-**Parallelism:** WS4, WS5, WS6 can run in parallel after WS3 completes.
+Simplified: `01 → {02, 04, 06} → 05 → 07 → 08 → 09 → 10`
+
+- Specs 02, 04, and 06 can start in parallel once Spec 01 is done.
+- Spec 03 requires Spec 02 (needs ingest to produce audio assets).
+- Spec 05 requires both Spec 03 (transcript) and Spec 04 (LLM).
+- Spec 06 requires Spec 01 and Spec 02 (needs ingest pipeline and AppServices).
+- Spec 07 requires Spec 05 (blurbs) and Spec 06 (publish context).
+- Spec 08 requires Spec 01, 06, and 07 (all tools must exist before wiring).
+- Spec 09 requires Spec 08 (tools must be registered before the Assistant can invoke them).
+- Spec 10 requires Spec 09 (agents run inside AssistantController).
 
 ---
 
-## WS1: Foundation & Project Setup ✅
+## Execution Order
 
-**Agent:** `kiro_default`
-**Depends on:** Nothing
-**Unlocks:** Everything
-**Status:** Complete (2026-04-29). Package created, folder structure established, .gitignore updated.
+### Wave 1 (sequential prerequisite)
+- **Spec 01** — Composition Root. Must complete before anything else.
 
-| ID | Phase | Task | Description | Status |
-|---|---|---|---|---|
-| 1.1 | 1 | Create Xcode Project Structure | PodedgeApp.swift, Info.plist, entitlements, workspace | ✅ |
-| 1.2 | 1 | Configure Entitlements | Sandbox, network.client, files.user-selected.read-write | ✅ |
-| 1.3 | 1 | Add Swift Package Dependencies | AWS SDK, WhisperKit, MLX-Swift, swift-markdown | ⬜ deferred — added as needed per WS |
-| 1.4 | 1 | Set Up Folder Structure | Models/, Services/, Extensions/, Hosts/, etc. | ✅ |
-| 1.5.1 | 1.5 | Create PodedgeCore Swift Package | Package.swift, Sources/PodedgeCore/ structure | ✅ |
-| 1.5.2 | 1.5 | Convert to Workspace | Podedge.xcworkspace, app depends on PodedgeCore | ✅ PodedgeCore added as local package dependency in Podedge.xcodeproj |
-| 1.5.3 | 1.5 | No AppKit/SwiftUI in PodedgeCore | grep CI check, enforce Foundation-only imports | ✅ Makefile check-core-imports verified |
-| 1.5.4 | 1.5 | Move Services as Built | Establish convention: services go in PodedgeCore | ✅ convention established |
+### Wave 2 (parallel)
+- **Spec 02** — Audio Ingest
+- **Spec 04** — Local LLM (MLX)
+- **Spec 06** — Publish Pipeline (depends on 01 + 02; start after 02 is done)
 
-> **Note:** Tasks 1.1, 1.2, and 1.5.2 are complete — Xcode project created and app builds. Task 1.3 remains deferred (dependencies added as needed per WS).
+### Wave 3 (parallel, after Wave 2)
+- **Spec 03** — Transcription (after 02)
+- **Spec 05** — Metadata Generation (after 03 + 04)
 
----
+### Wave 4 (sequential)
+- **Spec 07** — Social Posting (after 05 + 06)
 
-## WS2: Domain Model & Action Layer ✅
+### Wave 5 (sequential)
+- **Spec 08** — Tool Registry Wiring (after 01 + 06 + 07)
 
-**Agent:** `swift-swe` (assigned) — Phase 2 was done by `kiro_default` directly
-**Depends on:** WS1
-**Unlocks:** WS3
-**Status:** Complete (2026-04-30). Phase 2 (models + LibraryStore) + Phase 2.5 (Action Layer) done.
+### Wave 6 (sequential)
+- **Spec 09** — Assistant Core (after 08)
 
-| ID | Phase | Task | Description | Status |
-|---|---|---|---|---|
-| 2.1 | 2 | Define SwiftData Models | Show, Episode, Asset, HostBinding, AnalyticsBinding, DistributionRecord, Job, AnalyticsSnapshot | ✅ |
-| 2.2 | 2 | Define Enums & Value Types | EpisodeStatus, EpisodeType, JobKind, JobState, HostKind, etc. | ✅ |
-| 2.3 | 2 | LibraryStore Facade | Typed CRUD wrappers around ModelContext, observable collections | ✅ |
-| 2.4 | 2 | LibraryStore Tests | Unit tests for CRUD operations | ✅ 11 pure model tests pass via `swift test`; SwiftData integration tests compile but need Xcode runner |
-| 2.5.1 | 2.5 | Define Tool & ToolBroker | ToolDefinition protocol, ToolScope, CapabilityTier, ToolCaller, ToolBroker actor, ToolResult | ✅ |
-| 2.5.2 | 2.5 | AuditLog Service | @Model AgentAuditEntry, AuditLogService with redaction + 90-day retention | ✅ |
-| 2.5.3 | 2.5 | Destructive-Action Confirmation Sheet | ConfirmationSheetView + ConfirmationCoordinator | ✅ |
-| 2.5.4 | 2.5 | Tool Registry | Actor-based ToolRegistry with register/unregister/lookup/filter | ✅ |
-| 2.5.5 | 2.5 | ToolButton SwiftUI Helper | Wraps tool invocation, loading/error states | ✅ |
-| 2.5.6 | 2.5 | Tool & Broker Tests | 14 new tests: scope ordering, tier gating, broker confirmation, registry CRUD, redaction, audit log | ✅ |
+### Wave 7 (sequential)
+- **Spec 10** — Specialist Agents (after 09)
 
-> **Known issue:** SwiftData `ModelContainer` crashes in the bare SPM test
-> runner (signal 5). SwiftData integration tests are tagged `.swiftData` and
-> need Xcode's test runner. Pure model tests run fine via `swift test`.
+**Minimum critical path:** 01 → 02 → 03 → 05 → 07 → 08 → 09 → 10 (7 sequential steps)  
+**With parallelism:** 01 → {02 ‖ 04} → {03 ‖ 06} → 05 → 07 → 08 → 09 → 10
 
 ---
 
-## WS3: Extension Points & Infrastructure ✅
+## v1.1 Deferred
 
-**Agent:** `swift-swe`
-**Depends on:** WS2
-**Unlocks:** WS4, WS5, WS6 (in parallel)
-**Status:** Complete (2026-04-30). All 7 protocols + 4 infra services built. 64 tests pass via `xcodebuild test`. Import check ✅.
+The following features are specified but not built in v1:
 
-| ID | Phase | Task | Description | Status |
-|---|---|---|---|---|
-| 3.1 | 3 | AudioPipeline Protocol + PassthroughPipeline | sha256, probe, waveform, ID3 read, optional rewrite | ✅ |
-| 3.2 | 3 | PodcastHost Protocol | put, delete, publicURL, head | ✅ |
-| 3.3 | 3 | TranscriptionEngine Protocol | Vendor/adapt from wispr | ✅ |
-| 3.4 | 3 | LLMProvider Protocol | complete, stream, schema-constrained output | ✅ |
-| 3.5 | 3 | DistributionTarget Protocol | submit, refreshStatus, mode (.api/.guided) | ✅ |
-| 3.6 | 3 | PromotionRenderer Protocol | Generic render interface | ✅ |
-| 3.7 | 3 | AnalyticsProvider Protocol | register, prefix, fetchSnapshot | ✅ |
-| 4.1 | 4 | Logger with Redaction | Pattern-match and redact credentials from logs | ✅ |
-| 4.2 | 4 | KeychainService | Typed accessors for S3, OP3, PodcastIndex credentials | ✅ |
-| 4.3 | 4 | JobScheduler | Durable queue, dependencies, retries, backoff, resume on launch | ✅ |
-| 4.4 | 4 | JobScheduler Tests | Queue behavior, retry logic, dependency ordering | ✅ |
-
-> **Fixes applied during testing:**
-> - SwiftData `ModelContainer` crash: tests now share a single file-backed container
->   with per-test cleanup (`TestDatabase.reset()`) instead of creating multiple in-memory containers.
-> - SwiftData `#Predicate` enum limitation: `pendingJobs()` and `JobScheduler.pickAndRun()`
->   now fetch-then-filter in memory instead of using `#Predicate` with captured enum values,
->   which crashes in the Xcode test runner.
+| Feature | Notes |
+|---------|-------|
+| AnalystAgent | Reads OP3 cached data, renders charts via conversation |
+| FeedDebuggerAgent | Read-only feed + validator + distribution status |
+| QueryResolverAgent | Library read-only, shallow "what is / where is" queries |
+| AnthropicLLMProvider | Claude via Messages API with native tool-use; Keychain-stored API key |
+| OpenAI LLMProvider | GPT family via official API |
+| OpenAI-compatible LLMProvider | Generic base URL + key (Groq, Together, LM Studio, etc.) |
+| Large-model (100 GB+) MLX in-process support | Pre-flight RAM gating, resumable 100 GB+ downloads, validated mlx-swift-examples support for DeepSeek V4 / Qwen 3.5 / Gemma 4 31B architectures |
+| BYO-AI routing UI | Per-task provider assignment matrix |
+| LLM cost accounting | `LLMCallLog` model, pricing table, estimated USD per call |
+| Command-line interface (`podedge-cli`) | `swift-argument-parser`, shares SwiftData store |
+| External MCP agent access | `MCPServerInterface`, `podedge-agent` executable |
+| Audiograms & quote cards | `AudiogramRenderer`, `QuoteCardRenderer` |
+| Additional hosts | R2, B2, DigitalOcean Spaces, SFTP, WebDAV |
+| Advanced audio pipelines | Normalize, denoise, silence trim, filler removal |
+| Show import from feed | `FeedImporter`, `CutoverAssistant`, managed-externally mode |
+| Suggestion rail | Context-sensitive "Try asking…" in Assistant pane |
+| `/capabilities` slash command | Categorized tool listing in Assistant |
+| Cross-session conversation persistence | Each ⌘K starts fresh in v1.1 too; persistence is v1.2 |
 
 ---
 
-## WS4: Audio Ingest Pipeline
+## Archive — Pre-v1 Work
 
-**Agent:** `swift-swe`
-**Depends on:** WS3
-**Parallel with:** WS5, WS6
-**Status:** Complete (2026-04-30). All 6 tasks built + reviewed + fixes applied. 98 tests pass via `xcodebuild test`. Import check ✅.
+*(Preserved from the original tracker for historical reference)*
 
-| ID | Phase | Task | Description | Status |
-|---|---|---|---|---|
-| 5.1 | 5 | MP3 Validator | MPEG frame sanity, MIME sniff, reject non-MP3 | ✅ |
-| 5.2 | 5 | Audio Prober | AVFoundation: duration (frame scan), bitrate, channels, LUFS | ✅ |
-| 5.3 | 5 | Waveform Generator | 1000-sample peak array, stored as .wfm binary | ✅ |
-| 5.4 | 5 | ID3 Tag Reader/Writer | Read/write title, artist, album, cover (APIC), chapters (CHAP/CTOC) | ✅ |
-| 5.5 | 5 | IngestService | Orchestrate: copy → validate → hash → probe → waveform → ID3 → enqueue jobs | ✅ |
-| 5.6 | 5 | IngestService Tests | Fixture MP3s: short/long, mono/stereo, tagged/untagged, corrupted | ✅ |
+Work streams WS1–WS8 were completed between 2026-04-29 and 2026-05-04. They established the PodedgeCore package structure, all SwiftData models, all extension-point protocols, and all service implementations in isolation. The app target was built as a shell with placeholder wiring. 81 unit tests pass as of WS3 review (2026-04-30). The WS3 review decisions document is at `.kiro/learnings/ws3-review-decisions.md`.
 
-> **Review fixes applied:**
-> - MP3Validator: Now seeks past ID3 tag to verify MPEG sync word (rejects ID3-only files).
-> - ID3TagService: Bumped to ID3v2.4 with synchsafe frame sizes and UTF-8 encoding byte.
-> - ID3TagService: Cover art MIME auto-detected (JPEG/PNG), 2 MB size guard added.
-> - IngestService: Failed ingests delete the episode (no orphaned records).
-> - IngestService: Waveform asset SHA-256 computed via CryptoKit (was empty string).
-> - IngestService: Extracted magic number to `defaultWaveformSampleCount` constant.
-> - WaveformGenerator: Streaming approach — never loads all samples into memory.
-> - WaveformGenerator: All methods now static for consistency.
-> - MockAudioPipeline: `@unchecked Sendable` removed, error types constrained to `Sendable`.
-> - Deprecated `url.path` replaced with `url.path(percentEncoded: false)` throughout.
-> - Added doc `SeeAlso` links in IngestService.
-
----
-
-## WS5: Local AI (Transcription + LLM)
-
-**Agent:** `swift-swe`
-**Depends on:** WS3
-**Parallel with:** WS4, WS6
-
-| ID | Phase | Task | Description | Status |
-|---|---|---|---|---|
-| 6.1 | 6 | TranscriptionService | Wrap TranscriptionEngine, produce VTT + plain text | ⬜ |
-| 6.2 | 6 | Model Management | Download progress, storage, integrity checks (reuse wispr) | ⬜ |
-| 6.3 | 6 | MLXLLMProvider | MLX-Swift implementation of LLMProvider | ⬜ |
-| 6.4 | 6 | Prompt Library | episode-metadata.md, chapters.md, social-blurbs.md templates | ⬜ |
-| 6.5 | 6 | LLMService | Load prompts, render variables, call provider with JSON schema | ⬜ |
-| 6.6 | 6 | Metadata Generation Service | Transcript → title/subtitle/description/chapters/keywords/blurbs | ⬜ |
-| 6.7 | 6 | Transcription + Metadata Tests | Mock engine + provider for determinism | ⬜ |
-
----
-
-## WS6: Hosting, Feed, Analytics & Distribution ✅
-
-**Agent:** `swift-swe`
-**Depends on:** WS3
-**Parallel with:** WS4, WS5
-**Status:** Complete (2026-05-01). Reviewed by `code-review-agent`; review fixes applied. 173 tests pass via `swift test`.
-
-| ID | Phase | Task | Description | Status |
-|---|---|---|---|---|
-| 7.1 | 7 | S3Host Implementation | AWS SDK, multipart upload, HEAD-before-PUT, progress | ✅ HEAD-before-PUT idempotency; multipart upload path scaffolded |
-| 7.2 | 7 | HostService | Resolve HostBinding → PodcastHost, retries, logging | ✅ |
-| 7.3 | 7 | S3 Credentials UI | Form: bucket, region, prefix, base URL, keys. Test-connection | ✅ in SettingsView Hosts tab |
-| 7.4 | 7 | S3 Tests | URLProtocol stub or LocalStack | ✅ URLProtocol-based |
-| 8.1 | 8 | RSSFeed Value Types | RSSFeed, RSSChannel, RSSItem — pure Swift | ✅ |
-| 8.2 | 8 | FeedBuilder | Show + [Episode] → RSSFeed, calls AnalyticsProvider.prefix | ✅ |
-| 8.3 | 8 | RSS XML Serializer | RSSFeed → Data via XMLDocument | ✅ |
-| 8.4 | 8 | Feed Validator | Required fields, GUID uniqueness, enclosure reachability, size cap | ✅ |
-| 8.5 | 8 | FeedBuilder Tests | Golden-file comparison of feed XML | ✅ 4 golden fixtures under Tests/Fixtures/Feeds |
-| 9.1 | 9 | OP3AnalyticsProvider | register, prefix, fetchSnapshot | ✅ `register` now takes `podcastGUID` |
-| 9.2 | 9 | AnalyticsService | Periodic 6h polling, snapshot persistence, observable streams | ✅ |
-| 9.3 | 9 | OP3 Tests | URLProtocol stubs for OP3 API | ✅ |
-| 10.1 | 10 | PodcastIndexTarget | API submission with auth-hash scheme | ✅ |
-| 10.2 | 10 | PodpingTarget | Notify on publish via webhook or Hive | ✅ |
-| 10.3 | 10 | Guided Targets | Apple, Spotify, Amazon — open submission URL, capture IDs | ✅ ApplePodcastsTarget, SpotifyTarget, AmazonMusicTarget |
-| 10.4 | 10 | DistributionService | Registry of targets, fan-out on publish, status refresh | ✅ |
-| 10.5 | 10 | Distribution Tests | Mock targets, verify fan-out | ✅ |
-
-> **Supporting changes landed with WS5/WS6:**
-> - `AnalyticsProvider.register` now takes `podcastGUID`.
-> - `EpisodeSnapshot` gains `enclosureByteSize` and `transcriptURL`.
-> - New `HostBindingSnapshot` value type for cross-isolation use.
-> - `Package.swift` excludes `Tests/Fixtures` from the test target.
-> - Shared test helpers consolidated in `TestSupport.swift`.
-
----
-
-## WS7: Publish Pipeline & Promotion ✅
-
-**Agent:** `swift-swe`
-**Depends on:** WS4, WS5, WS6 (all three must complete)
-**Unlocks:** WS8
-**Status:** Complete (2026-05-01). Reviewed by `code-review-agent`; review fixes applied. 175 tests pass via `swift test`.
-
-| ID | Phase | Task | Description | Status |
-|---|---|---|---|---|
-| 11.1 | 11 | PublishArtifactBuilder | Original vs tag-rewritten copy with cover + chapters | ✅ |
-| 11.2 | 11 | PublishService | Full pipeline: upload → feed → distribute. Resumable via JobScheduler | ✅ |
-| 11.3 | 11 | Publish Dry-Run | Emit plan without side-effects: uploads, feed diff, notifications | ✅ |
-| 11.4 | 11 | Publish Tests | Mock host + distribution + analytics. Order, idempotency, resume | ✅ |
-| 12.1 | 12 | SocialBlurbRenderer | Per-platform variants: X, Bluesky, Mastodon, LinkedIn, Threads | ✅ |
-| 12.2 | 12 | Promotion UI Tab | Generated blurbs with copy buttons, regenerate action | ✅ PromotionTabView in EpisodeEditorView |
-
-> **Review fixes applied:**
-> - PublishService: Pre-resolved all SwiftData store data (episodes, assets, cover art, transcript) before the first `await` to eliminate actor reentrancy race window.
-> - PublishDryRun: Added per-episode cover art resolution and `originalAssetID` mapping for draft episodes.
-> - PublishServiceTests: Added `TestDatabase.reset()` to `PublishTestEnv.make()` and `.tags(.swiftData)` to the suite.
-> - social-blurbs.md template: Reverted `{{episode_title}}` addition — shared templates must only use variables that all callers provide.
-
----
-
-## WS8: UI & Integration Polish
-
-**Agent:** `swift-swe`
-**Depends on:** WS7 (and transitively all prior)
-**Unlocks:** WS9
-**Status:** Complete (2026-05-01). Reviewed by `code-review-agent`; review fixes applied. 175 tests pass via `swift test` (PodedgeCore). App target requires Xcode project for compilation.
-
-| ID | Phase | Task | Description | Status |
-|---|---|---|---|---|
-| 13.1 | 13 | MainWindowView | NavigationSplitView: ShowList → EpisodeList → EpisodeEditor | ✅ |
-| 13.2 | 13 | ShowListView / ShowEditorView | Show CRUD, cover art, per-show settings | ✅ |
-| 13.3 | 13 | EpisodeListView | Status pill, inline play, drag-drop MP3 | ✅ |
-| 13.4 | 13 | EpisodeEditorView | Tabs: Metadata, Transcript/Chapters, Promotion, Publish | ✅ |
-| 13.5 | 13 | FeedPreviewView | XML syntax highlight, validation warnings, diff | ✅ |
-| 13.6 | 13 | AnalyticsView | SwiftCharts over AnalyticsSnapshot | ✅ |
-| 13.7 | 13 | MenuBarController + MenuBarContentView | Job progress, quick new-episode, open main window | ✅ |
-| 13.8 | 13 | SettingsView | Tabs: General, Hosts, Analytics, Models, Distribution, About | ✅ |
-| 13.9 | 13 | OnboardingView | Stepper: welcome → show → S3 → OP3 → models → done | ✅ |
-| 14.1 | 14 | End-to-End Tests | Fixture MP3 → transcribe → metadata → publish → verify feed | ⬜ deferred — needs Xcode project runner |
-| 14.2 | 14 | Notifications | UserNotifications for publish success/failure, long jobs | ✅ |
-| 14.3 | 14 | Update Checker | Reuse wispr pattern | ✅ |
-| 14.4 | 14 | Accessibility Pass | VoiceOver labels, keyboard navigation | ✅ |
-| 14.5 | 14 | Log Export UI | Export redacted logs as .zip | ✅ |
-| 14.6 | 14 | Signing, Notarization, DMG | Makefile, ExportOptions.plist | ✅ |
-
----
-
-## WS9: v1.1 — Assistant & BYO-AI Providers
-
-**Agent:** `swift-swe` (providers, router, agents, services) + `kiro_default` (UI)
-**Depends on:** WS8 (v1 complete)
-
-### 9A: BYO-AI Provider Implementations (15.F)
-
-| ID | Phase | Task | Description | Status |
-|---|---|---|---|---|
-| 15.F.1 | 15.F | OllamaLLMProvider | HTTP client for /api/chat, /api/tags auto-discover | ⬜ |
-| 15.F.2 | 15.F | AnthropicLLMProvider | Messages API, streaming SSE, tool-use | ⬜ |
-| 15.F.3 | 15.F | OpenAILLMProvider | Chat Completions + Responses API, JSON mode, tool-use | ⬜ |
-| 15.F.4 | 15.F | OpenAICompatibleLLMProvider | Generic baseURL + key for Groq, Together, etc. | ⬜ |
-| 15.F.5 | 15.F | LLMRouter | Resolve (taskKind, show) → binding → provider. Retry/backoff | ⬜ |
-| 15.F.6 | 15.F | LLMCallLog & Cost Accounting | @Model LLMCallLog, pricing table, estimated cost | ⬜ |
-| 15.F.7 | 15.F | Consent & Privacy UI | First-use consent sheet, keepOnDevice toggle, provider labels | ⬜ |
-| 15.F.8 | 15.F | Provider Settings UI | List providers, test connection, manage credentials | ⬜ |
-| 15.F.9 | 15.F | Routing Settings UI | Task × binding matrix, preset profiles | ⬜ |
-| 15.F.10 | 15.F | Provider Tests | Per-provider URLProtocol stubs + fixtures | ⬜ |
-
-### 9B: In-App Assistant (Phase 12.5)
-
-| ID | Phase | Task | Description | Status |
-|---|---|---|---|---|
-| 12.5.1 | 12.5 | Extend LLMProvider with Tool-Use | Capabilities, LLMStreamEvent, ToolDefinition | ⬜ |
-| 12.5.2 | 12.5 | CapabilityTier Service | LLMBinding → tier via known-models table | ⬜ |
-| 12.5.3 | 12.5 | Router | Rule-based keyword pass + LLM classifier fallback | ⬜ |
-| 12.5.4 | 12.5 | AssistantController | Conversation orchestrator: utterance → router → agent → tools → stream | ⬜ |
-| 12.5.5 | 12.5 | PromoterAgent | Social blurb generation + posting with confirmation | ⬜ |
-| 12.5.6 | 12.5 | AnalystAgent | Read-only analytics + chart rendering | ⬜ |
-| 12.5.7 | 12.5 | QueryResolverAgent | Library read-only, shallow queries | ⬜ |
-| 12.5.8 | 12.5 | FeedDebuggerAgent | Feed + validator + distribution status, propose-only | ⬜ |
-| 12.5.9 | 12.5 | PublishAssistantAgent | Guided publish with explicit confirmation | ⬜ |
-| 12.5.10 | 12.5 | Shared Agent Resources | _safety.md, _escape-hatch.md, router.md | ⬜ |
-| 12.5.11 | 12.5 | Config-as-Memory Loader | PerShowGuidesService, read_guide tool | ⬜ |
-| 12.5.12 | 12.5 | AssistantPaneView | Conversation rendering, input, provider labels, tool-call rows | ⬜ |
-| 12.5.13 | 12.5 | Suggestion Rail | Context-sensitive "Try asking…" — no LLM call | ⬜ |
-| 12.5.14 | 12.5 | /capabilities Slash Command | Categorized tool listing from ToolRegistry | ⬜ |
-| 12.5.15 | 12.5 | ⌘K Global Shortcut + Pane Visibility | Fresh conversation, pane show/hide, preference | ⬜ |
-| 12.5.16 | 12.5 | Rate Limits & Budget Enforcement | Per-session caps, warnings at 50%, hard stops at 100% | ⬜ |
-| 12.5.17 | 12.5 | Escape-Hatch Responder | Failure responses with deep-links to manual UI + Settings | ⬜ |
-| 12.5.18 | 12.5 | Assistant Settings UI | Pane visibility, propose-only toggle, per-agent model overrides | ⬜ |
-| 12.5.19 | 12.5 | Audit Log View | Filter, export JSONL of AgentAuditEntry rows | ⬜ |
-| 12.5.20 | 12.5 | Assistant Tests | Router, controller, per-agent tests with mock LLM | ⬜ |
-
----
-
-## WS10: Deferred Features (Not Built in v1 or v1.1)
-
-Tracked for planning only. No agent assignment yet.
-
-| ID | Phase | Feature | Key Components |
-|---|---|---|---|
-| 15.A | 15 | Import Existing Show | FeedImporter, iTunesLookup, EnclosureDownloader, CutoverAssistant |
-| 15.B | 15 | Audiograms & Quote Cards | AudiogramRenderer, QuoteCardRenderer |
-| 15.C | 15 | Scheduled Publishing | BGTaskScheduler, date picker, wake-from-sleep |
-| 15.D | 15 | Additional Hosts | R2Host, B2Host, DOSpacesHost, SFTPHost, WebDAVHost |
-| 15.E | 15 | Advanced Audio Pipelines | Normalize, SilenceTrim, FillerRemoval, Denoise, Chained |
-| 15.G | 15 | CLI (podedge-cli) | swift-argument-parser, shared SwiftData store, --dry-run |
-| 15.H | 15 | External MCP Agent Access | MCPServerInterface, AgentSession, pairing UI, podedge-agent |
-| 15.I | 15 | Phase-Dependency Update | PodedgeCore prerequisite for 15.F, 15.G, 15.H |
-| 15.J | 15 | In-App Hosting Provisioning | One-click S3 bucket + CloudFront + OAC + IAM setup from the app or assistant. User provides AWS admin credentials once; app creates all resources via AWS SDK and stores the scoped IAM key. Eliminates manual AWS Console setup. |
-
----
-
-## Execution Order Summary
-
-```
-Sequential:  WS1 → WS2 → WS3
-Parallel:    WS4 ║ WS5 ║ WS6    (after WS3)
-Sequential:  WS7                  (after WS4+WS5+WS6)
-Sequential:  WS8                  (after WS7)
-Sequential:  WS9                  (after WS8, v1.1)
-Deferred:    WS10                 (future)
-```
-
-**Estimated task counts:**
-- v1 (WS1–WS8): 73 tasks
-- v1.1 (WS9): 30 tasks
-- Deferred (WS10): 40+ tasks
-
-**Review gates:** `code-review-agent` reviews after each work stream completes, before the next dependent stream begins.
-
----
-
-## Session Log
-
-| Date | What happened | Agent |
-|---|---|---|
-| 2026-04-29 | WS1: Created PodedgeCore package (Package.swift, folder structure, .gitignore, import check). WS2 Phase 2: Built all 8 SwiftData models, 8 enums/value types, LibraryStore facade, tests. `swift build` passes. 11 pure model tests pass. SwiftData integration tests need Xcode runner. | `kiro_default` (did WS2 Phase 2 directly instead of delegating to `swift-swe`) |
-| 2026-04-29 | Review of WS1+WS2: `swift-swe` reviewed all code. Found 6 🔴 must-fix, 6 🟡 should-fix, 4 🟢 nice-to-have. | `swift-swe` (review) |
-| 2026-04-29 | Applied all 16 fixes: Asset.localURL, AnalyticsSnapshot relationships, doc comments throughout, PodedgeSchema namespace, summary rename, Show.updatedAt, missing CRUD methods, new tests. Build ✅, 13 pure model tests ✅, import check ✅. | `swift-swe` (fix) |
-
-**Next up:** WS2 Phase 2.5 (Action Layer — Tool & ToolBroker) → then WS3 (protocols + infra). Delegate to `swift-swe`.
-
-| 2026-04-30 | WS2 Phase 2.5: Built Action Layer — ToolScope, CapabilityTier, ToolDefinition protocol, ToolCaller protocol, ToolResult enum, ToolBroker actor, ToolRegistry actor, AgentAuditEntry @Model, AuditLogService with redaction + 90-day retention. 7 source files, 2 test files. Build ✅, 43 tests pass (29 existing + 14 new). Import check ✅. Tasks 2.5.3/2.5.5 deferred to WS8 (SwiftUI). | `swift-swe` |
-
-**Next up:** WS3 (Extension Points & Infrastructure — protocols + infra services). Delegate to `swift-swe`.
-
-| 2026-04-30 | WS3: Built all 11 tasks — 7 extension point protocols (AudioPipeline + PassthroughPipeline, PodcastHost, TranscriptionEngine, LLMProvider, DistributionTarget, PromotionRenderer, AnalyticsProvider) + 4 infra services (PodedgeLogger, KeychainService, JobScheduler, JobScheduler tests). 11 new source files, 1 new test file, 1 test support file. Fixed SwiftData test infrastructure: shared single container with per-test cleanup (no more signal trap crashes), in-memory enum filtering for `#Predicate` compatibility. `xcodebuild test` ✅ — 64/64 tests pass. Import check ✅. | `swift-swe` (delegated) + `kiro_default` (test fixes) |
-
-**Next up:** WS3 review by `code-review-agent`, then WS4 ║ WS5 ║ WS6 in parallel.
-
-| 2026-04-30 | WS3 review: `code-review-agent` found 2 🔴 must-fix, 8 🟡 should-fix, 4 🟢 nice-to-have. Key issues: ToolResult.failure(Error) not Sendable, @Model types in protocol signatures, missing PodedgeError cases, JobScheduler no max retry/backoff/logging, no KeychainService/PassthroughPipeline tests, no start() integration test, AWS redaction gap, AnalyticsSnapshotData naming. | `code-review-agent` |
-| 2026-04-30 | Applied all review fixes (2 🔴 + 8 🟡 + 1 🟢): ToolResult.failure(String), ShowSnapshot/EpisodeSnapshot value types, 4 new PodedgeError cases, JobScheduler maxAttempts + backoff + logging, KeychainServiceTests (6), AudioPipelineTests (6), start() + maxAttempts tests, AWS redaction patterns, AnalyticsFetchResult rename, ToolBroker resolveTool helper. `xcodebuild test` ✅ — 81/81 tests pass. Import check ✅. Decisions logged in `.kiro/learnings/ws3-review-decisions.md`. | `swift-swe` (delegated) |
-
-**Next up:** WS4 ║ WS5 ║ WS6 in parallel. All review conditions met — proceed.
-
-| 2026-04-30 | WS4: Built all 6 tasks — MP3Validator (magic bytes + MPEG sync scan), AudioProber (AVFoundation), WaveformGenerator (streaming PCM peak bucketing), ID3TagService (AVFoundation read + ID3v2.4 write), IngestService (full pipeline orchestrator), IngestServiceTests (MockAudioPipeline + 14 tests). 5 new source files, 1 new test file. `xcodebuild test` ✅ — 94/94 tests pass. Import check ✅. | `swift-swe` (delegated) |
-| 2026-04-30 | WS4 review: `code-review-agent` found 3 🔴 must-fix, 7 🟡 should-fix, 5 🟢 nice-to-have. Key issues: MP3Validator accepts ID3-only files, ID3TagService v2.3/v2.4 encoding mismatch, orphaned episodes on failure, WaveformGenerator loads entire file into memory, empty waveform SHA-256, test coverage gaps. | `code-review-agent` |
-| 2026-04-30 | Applied all review fixes (3 🔴 + 6 🟡 + 3 🟢): MP3Validator seeks past ID3 tag, ID3TagService bumped to v2.4 with synchsafe frames, failed ingests delete episode, WaveformGenerator streaming, waveform SHA-256 via CryptoKit, cover art size guard + MIME detection, static WaveformGenerator methods, `@unchecked Sendable` removed, deprecated `url.path` replaced, magic number extracted, SeeAlso doc links. 4 new tests (ID3 round-trip, waveform failure cleanup, ID3 failure cleanup, ID3-only rejection). `xcodebuild test` ✅ — 98/98 tests pass. Import check ✅. | `swift-swe` (delegated) |
-
-**Next up:** WS5 ║ WS6 in parallel. WS4 review conditions met — proceed.
-
-| 2026-05-01 | WS5 + WS6: Built in parallel. WS5 — TranscriptionService (VTT + plain text), ModelManager, MLXLLMProvider scaffold, prompt library (`episode-metadata.md`, `chapters.md`, `social-blurbs.md`), LLMService, MetadataGenerationService. WS6 — S3Host (HEAD-before-PUT), HostService, RSSFeed value types, FeedBuilder, FeedXMLSerializer, FeedValidator (4 golden-file fixtures), OP3AnalyticsProvider, AnalyticsService (6h polling), DistributionService with PodcastIndexTarget, PodpingTarget, and guided ApplePodcastsTarget / SpotifyTarget / AmazonMusicTarget. Supporting: `AnalyticsProvider.register` takes `podcastGUID`, `EpisodeSnapshot` gains `enclosureByteSize` + `transcriptURL`, new `HostBindingSnapshot`, `Package.swift` excludes `Tests/Fixtures`, shared `TestSupport.swift`. 27 new source files, 7 new test files + fixtures. `swift test` ✅ — 173/173 tests across 30 suites pass. | `swift-swe` (delegated, two parallel tracks) |
-| 2026-05-01 | WS5 + WS6 review: `code-review-agent` reviewed both streams and reported findings spanning the S3 host, feed generation, analytics polling, and metadata generation surfaces. | `code-review-agent` |
-| 2026-05-01 | Applied all WS5 + WS6 review fixes; `swift test` ✅ — 173/173 tests pass. Committed as `38b5d82 WS5 & WS6 completed and tested`. | `swift-swe` (delegated) |
-
-**Next up:** WS7 (Publish Pipeline & Promotion). WS4, WS5, WS6 review conditions met — all three prerequisites satisfied. Delegate to `swift-swe`.
-
-| 2026-05-01 | WS7: Built all 6 tasks — PublishArtifactBuilder (original vs tag-rewritten copy), PublishService (full upload → feed → distribute pipeline, resumable via JobScheduler), PublishDryRun (plan without side-effects), PublishServiceTests (34 tests: pipeline order, idempotency, dry-run), SocialBlurbRenderer (X, Bluesky, Mastodon, LinkedIn, Threads variants). Task 12.2 (Promotion UI Tab) deferred to WS8 (SwiftUI). `swift test` ✅ — 175/175 tests pass. | `swift-swe` (delegated) |
-| 2026-05-01 | WS7 review: `code-review-agent` found 2 🔴 must-fix, 1 🟡 should-fix, 1 🟢 reverted. Key issues: actor reentrancy race in PublishService (store data fetched after async suspension points), missing TestDatabase.reset() in PublishTestEnv, missing per-episode cover art in PublishDryRun. | `code-review-agent` |
-| 2026-05-01 | Applied all WS7 review fixes; `swift test` ✅ — 175/175 tests pass. Decisions logged in `.kiro/learnings/ws7-review-decisions.md`. | `swift-swe` (delegated) |
-
-**Next up:** WS8 (UI & Integration). WS7 review conditions met — all prerequisites satisfied. Assign to `kiro_default`.
-
-| 2026-05-01 | WS8: Built all Phase 13 + 14 tasks — MainWindowView (two-column NavigationSplitView, sidebar tabs, ⌘K chat placeholder), ShowListView + ShowEditorView, EpisodeListView (status dots, drag-drop MP3), EpisodeEditorView (Metadata/Transcript/Promotion/Publish tabs), FeedPreviewView, AnalyticsView (SwiftCharts), MenuBarContentView, SettingsView (6 tabs), OnboardingView (6-step stepper). Also completed deferred tasks: ConfirmationSheetView + ConfirmationCoordinator (2.5.3), ToolButton (2.5.5), S3 credentials UI (7.3), PromotionTabView (12.2). Phase 14: NotificationService, UpdateChecker, accessibility pass, LogExportView, ExportOptions.plist. Task 14.1 (E2E tests) deferred — needs Xcode project runner. 23 files in Podedge/. `swift build` ✅ (PodedgeCore). Import check ✅. 175 tests pass (unchanged — app target tests need Xcode project). | `swift-swe` (delegated) |
-| 2026-05-01 | WS8 review: `code-review-agent` found 8 🔴 must-fix, 10 🟡 should-fix, 5 🟢 nice-to-have. Key issues: ToolBroker not injected at app level, destructive ops bypassing ConfirmationCoordinator, @MainActor blocking on CPU work, Keychain errors not handled before persisting HostBinding, slug generation producing invalid S3 keys, retroactive String: Identifiable conformance, NotificationService/UpdateChecker not started on launch. | `code-review-agent` |
-| 2026-05-01 | Applied all WS8 review fixes (8 🔴 + 10 🟡 + 5 🟢): ToolBroker instantiated and injected at app level, destructive operations route through ConfirmationCoordinator, Task.detached for CPU-bound work, Keychain errors handled before persisting HostBinding, slug generation uses regex for valid S3 keys, retroactive String: Identifiable removed, NotificationService and UpdateChecker started on launch. `swift build` ✅ (PodedgeCore). Import check ✅. 175 tests pass. | `swift-swe` (delegated) |
-
-**Next up:** WS9 (v1.1 — Assistant & BYO-AI). WS8 review conditions met.
-
-| 2026-05-01 | Xcode project created at `Podedge/Podedge.xcodeproj`. App target compiles and runs. PodedgeCore added as local package dependency (no separate workspace needed). Build fixes applied: `import os` in EpisodeListView, `import UniformTypeIdentifiers` in LogExportView + ShowEditorView, `.accent` → `.tint` in OnboardingView/DashboardView/SettingsView, `#Predicate` enum comparison via `.rawValue`, `onKeyPress` → `keyboardShortcut` in MainWindowView. Tasks 1.1, 1.2, 1.5.2 marked complete. | `kiro_default` |
-| 2026-05-04 | Fixed OP3 onboarding UX: analytics setup is now hands-off — single toggle (on by default), no API key or URL required, registration happens automatically on first publish. Added import path for users migrating from another app (collapsed "Already using OP3?" DisclosureGroup accepts existing OP3 Show UUID). Settings → Analytics now shows registration status (Registered/Pending), op3.dev dashboard link, enable/disable, and UUID import. Fixed crash: concurrent SwiftData modelContext access during onboarding S3 step — S3 step now awaits keychain storage before advancing. Files changed: `OnboardingView.swift`, `SettingsView.swift`. Docs updated: `docs/user/op3-analytics.md` (full rewrite), `docs/user/getting-started.md` (onboarding table). | `kiro_default` |
+Key decisions made during pre-v1 work:
+- `ToolResult.failure` stores `String` (not `Error`) for `Sendable` compliance.
+- `ShowSnapshot` / `EpisodeSnapshot` value types used at protocol boundaries.
+- `JobScheduler` is `@MainActor`-isolated; handlers manage their own `ModelContext`.
+- `AnalyticsSnapshotData` renamed to `AnalyticsFetchResult`.
+- SwiftData test pattern: single shared `TestDatabase` with per-test `reset()`.

@@ -251,16 +251,19 @@ struct WaveformSaveLoadTests {
 @MainActor
 struct IngestServiceTests {
 
+    private static let db = "ingest"
+
     private func makeStore() throws -> LibraryStore {
-        try TestDatabase.reset()
-        return LibraryStore(modelContext: TestDatabase.shared.mainContext)
+        let container = TestDatabase.container(for: Self.db)
+        try TestDatabase.reset(container)
+        return LibraryStore(modelContext: container.mainContext)
     }
 
     @Test("Full ingest flow creates Asset, Episode, and follow-up jobs")
     func fullIngestFlow() async throws {
         let store = try makeStore()
-        let context = TestDatabase.shared.mainContext
-        let scheduler = JobScheduler(modelContainer: TestDatabase.shared)
+        let context = TestDatabase.container(for: Self.db).mainContext
+        let scheduler = JobScheduler(modelContainer: TestDatabase.container(for: Self.db))
         let mockPipeline = MockAudioPipeline()
 
         let show = try IngestTestFixtures.createTestShow(context: context)
@@ -296,8 +299,8 @@ struct IngestServiceTests {
     @Test("Ingest throws for invalid MP3 file")
     func invalidMP3Throws() async throws {
         let store = try makeStore()
-        let context = TestDatabase.shared.mainContext
-        let scheduler = JobScheduler(modelContainer: TestDatabase.shared)
+        let context = TestDatabase.container(for: Self.db).mainContext
+        let scheduler = JobScheduler(modelContainer: TestDatabase.container(for: Self.db))
         let mockPipeline = MockAudioPipeline()
 
         let show = try IngestTestFixtures.createTestShow(context: context)
@@ -318,8 +321,8 @@ struct IngestServiceTests {
     @Test("Ingest throws when probe fails")
     func probeFailureThrows() async throws {
         let store = try makeStore()
-        let context = TestDatabase.shared.mainContext
-        let scheduler = JobScheduler(modelContainer: TestDatabase.shared)
+        let context = TestDatabase.container(for: Self.db).mainContext
+        let scheduler = JobScheduler(modelContainer: TestDatabase.container(for: Self.db))
 
         var mockPipeline = MockAudioPipeline()
         mockPipeline.probeError = PodedgeError.invalidMP3(reason: "Simulated probe failure")
@@ -342,8 +345,8 @@ struct IngestServiceTests {
     @Test("Ingest throws when SHA-256 fails")
     func hashFailureThrows() async throws {
         let store = try makeStore()
-        let context = TestDatabase.shared.mainContext
-        let scheduler = JobScheduler(modelContainer: TestDatabase.shared)
+        let context = TestDatabase.container(for: Self.db).mainContext
+        let scheduler = JobScheduler(modelContainer: TestDatabase.container(for: Self.db))
 
         var mockPipeline = MockAudioPipeline()
         mockPipeline.sha256Error = PodedgeError.invalidMP3(reason: "Simulated hash failure")
@@ -366,8 +369,8 @@ struct IngestServiceTests {
     @Test("Ingest uses filename as title when ID3 title is empty")
     func fallbackToFilename() async throws {
         let store = try makeStore()
-        let context = TestDatabase.shared.mainContext
-        let scheduler = JobScheduler(modelContainer: TestDatabase.shared)
+        let context = TestDatabase.container(for: Self.db).mainContext
+        let scheduler = JobScheduler(modelContainer: TestDatabase.container(for: Self.db))
 
         var mockPipeline = MockAudioPipeline()
         mockPipeline.id3Result = ID3Metadata() // No title
@@ -392,8 +395,8 @@ struct IngestServiceTests {
     @Test("Ingest cleans up episode when waveform generation fails")
     func waveformFailureCleansUp() async throws {
         let store = try makeStore()
-        let context = TestDatabase.shared.mainContext
-        let scheduler = JobScheduler(modelContainer: TestDatabase.shared)
+        let context = TestDatabase.container(for: Self.db).mainContext
+        let scheduler = JobScheduler(modelContainer: TestDatabase.container(for: Self.db))
 
         var mockPipeline = MockAudioPipeline()
         mockPipeline.waveformError = PodedgeError.invalidMP3(reason: "Simulated waveform failure")
@@ -420,8 +423,8 @@ struct IngestServiceTests {
     @Test("Ingest cleans up episode when ID3 read fails")
     func id3ReadFailureCleansUp() async throws {
         let store = try makeStore()
-        let context = TestDatabase.shared.mainContext
-        let scheduler = JobScheduler(modelContainer: TestDatabase.shared)
+        let context = TestDatabase.container(for: Self.db).mainContext
+        let scheduler = JobScheduler(modelContainer: TestDatabase.container(for: Self.db))
 
         var mockPipeline = MockAudioPipeline()
         mockPipeline.id3Error = PodedgeError.invalidMP3(reason: "Simulated ID3 read failure")

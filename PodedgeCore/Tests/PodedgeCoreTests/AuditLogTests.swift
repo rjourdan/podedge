@@ -138,13 +138,14 @@ struct AgentAuditEntryModelTests {
 
 // MARK: - SwiftData Integration Tests
 
-@Suite("AuditLogService SwiftData", .tags(.swiftData))
+@Suite("AuditLogService SwiftData", .serialized, .tags(.swiftData))
 struct AuditLogServiceTests {
 
     @MainActor
     private func makeService() throws -> (AuditLogService, ModelContext) {
-        try TestDatabase.reset()
-        let context = TestDatabase.shared.mainContext
+        let container = TestDatabase.container(for: "auditlog")
+        try TestDatabase.reset(container)
+        let context = container.mainContext
         return (AuditLogService(modelContext: context), context)
     }
 

@@ -14,15 +14,21 @@ Podedge uses a lightweight [MADR](https://adr.github.io/madr/)-style format. Eac
 
 ## Index
 
-*(No ADRs have been written yet. Candidate decisions to capture, drawn from the existing design and steering documents:)*
+### Written
 
-- `0001-layered-architecture.md` — UI Layer → Service Layer → Models, no upward arrows.
-- `0002-podedgecore-no-ui-imports.md` — `PodedgeCore` must not import SwiftUI or AppKit.
-- `0003-toolbroker-as-single-action-layer.md` — All user actions route through `ToolBroker`.
-- `0004-swiftdata-over-coredata.md` — SwiftData as the persistence layer.
-- `0005-durable-jobs-for-long-running-work.md` — `JobScheduler` owns all multi-step and long-running work.
-- `0006-keychain-only-for-credentials.md` — No credentials in SwiftData, `UserDefaults`, or files.
-- `0007-protocol-based-extension-points.md` — New capabilities via protocol conformers, not by modifying existing code.
+| # | File | Decision |
+|---|------|----------|
+| 0001 | [`0001-ui-writes-through-toolbroker.md`](0001-ui-writes-through-toolbroker.md) | UI reads use `@Query`/`@Bindable` directly; all writes go through `ToolBroker`. |
+| 0002 | [`0002-v1-fully-local-llm-mlx-plus-ollama.md`](0002-v1-fully-local-llm-mlx-plus-ollama.md) | v1 ships two local LLM providers (MLX in-process + Ollama); no cloud providers in v1. |
+
+### Candidates (not yet written)
+
+- `0003-layered-architecture.md` — UI Layer → Service Layer → Models, no upward arrows.
+- `0004-podedgecore-no-ui-imports.md` — `PodedgeCore` must not import SwiftUI or AppKit.
+- `0005-swiftdata-over-coredata.md` — SwiftData as the persistence layer.
+- `0006-durable-jobs-for-long-running-work.md` — `JobScheduler` owns all multi-step and long-running work.
+- `0007-keychain-only-for-credentials.md` — No credentials in SwiftData, `UserDefaults`, or files.
+- `0008-protocol-based-extension-points.md` — New capabilities via protocol conformers, not by modifying existing code.
 
 ## Template
 

@@ -160,8 +160,9 @@ struct DomainModelTests {
 struct LibraryStoreTests {
 
     private func makeStore() throws -> LibraryStore {
-        try TestDatabase.reset()
-        return LibraryStore(modelContext: TestDatabase.shared.mainContext)
+        let container = TestDatabase.container(for: "library")
+        try TestDatabase.reset(container)
+        return LibraryStore(modelContext: container.mainContext)
     }
 
     // MARK: - Shows

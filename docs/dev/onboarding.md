@@ -5,6 +5,7 @@
 
 <!--
 Changelog
+- 2026-05-05: Added "Data access: reads vs writes" section. See ADR 0001.
 - 2026-05-01: Initial draft. Reflects PodedgeCore state only; the app target has not yet landed in the repo.
 - 2026-05-01: Confirmed OvercastTarget stub as first-change task — guided targets are ~32-line copy-paste-adapt pattern with matching ~10-line tests (verified in Distribution/ and DistributionServiceTests.swift).
 - 2026-05-01: WS7 complete. PublishService, PublishArtifactBuilder, PublishDryRun, and SocialBlurbRenderer now exist in PodedgeCore.
@@ -78,6 +79,25 @@ flowchart TD
 ```
 
 *`PodedgeCore` is the real codebase. The app target wraps it with SwiftUI views. `PodedgeCore` is added as a local package dependency in `Podedge.xcodeproj`.*
+
+## Data access: reads vs writes
+
+Podedge uses a split model. Views read SwiftData directly with `@Query` and
+`@Bindable` — Apple's idiomatic pattern. Any committed write goes through
+`ToolBroker`. This is what lets the UI and the in-app Assistant call the same
+actions with the same audit and confirmation behaviour.
+
+```swift
+// Read — idiomatic SwiftData, fine anywhere in a view
+@Query var episodes: [Episode]
+
+// Write — always through the broker
+try await toolBroker.execute("podedge.episode.publish", input: payload, caller: .ui(source: "PublishButton"))
+```
+
+See [ADR 0001](../decisions/0001-ui-writes-through-toolbroker.md) for the full
+rationale, and [mental-model.md](mental-model.md) tenet 6 for the one-line
+summary.
 
 ## The 5 files to read on day one
 

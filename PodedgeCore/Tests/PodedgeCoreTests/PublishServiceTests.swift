@@ -143,8 +143,9 @@ private struct PublishTestEnv {
     let dryRun: PublishDryRun
 
     static func make(chaptersJSON: String? = nil) throws -> PublishTestEnv {
-        try TestDatabase.reset()
-        let store = LibraryStore(modelContext: TestDatabase.shared.mainContext)
+        let container = TestDatabase.container(for: "publish")
+        try TestDatabase.reset(container)
+        let store = LibraryStore(modelContext: container.mainContext)
 
         let binding = HostBinding(
             displayName: "Test Host", bucket: "b", region: "us-east-1",
