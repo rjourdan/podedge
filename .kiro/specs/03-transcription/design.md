@@ -2,33 +2,41 @@
 
 ## Architecture Overview
 
-`WhisperKitTranscriptionEngine` wraps the WhisperKit Swift package behind the existing `TranscriptionEngine` protocol. It is constructed in `AppServices.init()` and passed to both `TranscriptionService` and `ModelManager`. `TranscribeJobHandler` is a `JobHandler` registered on `JobScheduler` during `bootstrap()`; it bridges the job system to `TranscriptionService`.
+`MLXTranscriptionEngine` wraps `mlx-audio-swift`'s `MLXAudioSTT` module behind the existing `TranscriptionEngine` protocol. It is constructed in `AppServices.init()` and passed to both `TranscriptionService` and `ModelManager`. `TranscribeJobHandler` is a `JobHandler` registered on `JobScheduler` during `bootstrap()`; it bridges the job system to `TranscriptionService`.
+
+This shares the MLX Metal compute stack with Spec 04's `MLXLLMProvider`, eliminating the dual-runtime memory overhead that WhisperKit (CoreML/ANE) + MLX would have imposed.
 
 The onboarding model download step calls `ModelManager.downloadModel(named:onProgress:)` directly. No new service is needed — `ModelManager` already handles progress tracking.
 
 ## Types
 
-### New: `WhisperKitTranscriptionEngine`
+### New: `MLXTranscriptionEngine`
 
 ```swift
-// PodedgeCore/Sources/PodedgeCore/Services/WhisperKitTranscriptionEngine.swift
-import WhisperKit
+// PodedgeCore/Sources/PodedgeCore/Services/MLXTranscriptionEngine.swift
+import MLXAudioSTT
+import MLXAudioCore
 
-public actor WhisperKitTranscriptionEngine: TranscriptionEngine {
-    public init(modelName: String, modelsDirectory: URL)
+public actor MLXTranscriptionEngine: TranscriptionEngine {
+    private let modelID: String
+    private let modelsDirectory: URL
+    private var loadedModel: (any STTModel)?
+
+    public init(modelID: String, modelsDirectory: URL)
+
     public func transcribe(audioURL: URL, language: String?) async throws -> TranscriptionResult
     public func availableModels() async throws -> [TranscriptionModelInfo]
     public func downloadModel(named name: String, progress: @Sendable (Double) -> Void) async throws
 }
 ```
 
-The actor isolation ensures the WhisperKit pipeline (which is not `Sendable`) is accessed from a single isolation domain.
+The actor isolation ensures the MLX model (which holds GPU state) is accessed from a single isolation domain.
 
-`transcribe` converts WhisperKit's `TranscriptionResult` segments into `TranscriptionSegment` values and builds the VTT string in-process (no file I/O — `TranscriptionService` handles file writing).
+`transcribe` loads audio via `MLXAudioCore.loadAudioArray(from:)`, calls `model.generate(audio:)`, converts the output segments into `TranscriptionSegment` values, and builds the VTT string in-process (no file I/O — `TranscriptionService` handles file writing).
 
 `availableModels()` returns the hardcoded catalog; `isDownloaded` is determined by checking the filesystem for the model directory.
 
-`downloadModel` calls `WhisperKit.download(variant:downloadBase:useBackgroundSession:)` and bridges progress via the callback.
+`downloadModel` uses `MLXAudioSTT`'s `fromPretrained` with a custom download directory, bridging progress via the callback.
 
 ### New: `TranscribeJobHandler`
 
@@ -37,7 +45,6 @@ The actor isolation ensures the WhisperKit pipeline (which is not `Sendable`) is
 public struct TranscribeJobHandler: JobHandler, Sendable {
     public let handledKind: JobKind = .transcribe
     private let transcriptionService: TranscriptionService
-    private let modelContainer: ModelContainer  // injected at registration
 
     public init(transcriptionService: TranscriptionService)
     public func execute(jobID: UUID, container: ModelContainer) async throws
@@ -50,7 +57,7 @@ public struct TranscribeJobHandler: JobHandler, Sendable {
 
 ```swift
 // Podedge/Podedge/AppServices.swift
-public let transcriptionEngine: WhisperKitTranscriptionEngine
+public let transcriptionEngine: MLXTranscriptionEngine
 public let transcriptionService: TranscriptionService  // already exists
 public let modelManager: ModelManager                  // already exists
 ```
@@ -79,9 +86,9 @@ public let modelManager: ModelManager                  // already exists
 
 | Action | Path |
 |--------|------|
-| **Create** | `PodedgeCore/Sources/PodedgeCore/Services/WhisperKitTranscriptionEngine.swift` |
+| **Create** | `PodedgeCore/Sources/PodedgeCore/Services/MLXTranscriptionEngine.swift` |
 | **Create** | `PodedgeCore/Sources/PodedgeCore/Services/TranscribeJobHandler.swift` |
-| **Modify** | `PodedgeCore/Package.swift` — add WhisperKit dependency |
+| **Modify** | `PodedgeCore/Package.swift` — add mlx-audio-swift dependency (`MLXAudioSTT`, `MLXAudioCore`) |
 | **Modify** | `Podedge/Podedge/AppServices.swift` — construct engine, register handler |
 | **Modify** | `Podedge/Podedge/Views/Onboarding/OnboardingView.swift` — model download step |
 | **Modify** | `Podedge/Podedge/Views/Content/EpisodeEditorView.swift` — transcript tab |
@@ -92,8 +99,8 @@ public let modelManager: ModelManager                  // already exists
 2. Handler creates `ModelContext`, fetches `Episode` by `job.targetID`.
 3. Resolves `episode.originalAssetID` → `Asset.localURL`.
 4. Calls `transcriptionService.transcribe(audioURL:language:outputDirectory:)`.
-5. `TranscriptionService` → `WhisperKitTranscriptionEngine.transcribe(audioURL:language:)`.
-6. WhisperKit processes audio on-device → returns segments.
+5. `TranscriptionService` → `MLXTranscriptionEngine.transcribe(audioURL:language:)`.
+6. Engine loads audio via `loadAudioArray`, runs STT model on Metal GPU → returns text/segments.
 7. `TranscriptionService` writes `.vtt` and `.txt` to `outputDirectory`.
 8. Handler creates `Asset(kind: .transcript, localURL: vttURL, sha256: ..., contentType: "text/vtt")`.
 9. Sets `episode.transcriptAssetID`, saves via `ModelContext`.
@@ -104,21 +111,29 @@ public let modelManager: ModelManager                  // already exists
 
 | Error | Trigger | Handling |
 |-------|---------|----------|
-| `PodedgeError.transcriptionFailed(reason:)` | WhisperKit throws | Job marked `.failed`; episode status unchanged (stays `.ready`) |
+| `PodedgeError.transcriptionFailed(reason:)` | MLX STT model throws | Job marked `.failed`; episode status unchanged (stays `.ready`) |
 | `PodedgeError.notFound(entity: "Episode")` | Episode deleted before job runs | Job marked `.failed`; no-op |
 | `PodedgeError.notFound(entity: "Asset")` | Audio asset missing | Job marked `.failed` |
 
 ## Concurrency Model
 
-- `WhisperKitTranscriptionEngine` is an `actor` — WhisperKit's pipeline is not `Sendable`, so actor isolation is required.
+- `MLXTranscriptionEngine` is an `actor` — MLX model GPU state is not `Sendable`, so actor isolation is required.
 - `TranscribeJobHandler` is a `Sendable` struct; it holds a reference to `TranscriptionService` (also an actor).
 - `TranscribeJobHandler.execute` creates its own `ModelContext` (not `Sendable`) within the function scope.
-- Progress updates from WhisperKit's callback are bridged to the actor via `Task { await engine.updateProgress(...) }`.
+- MLX inference is synchronous within the actor; no callback bridging needed (unlike WhisperKit).
+
+## Dependency Alignment with Spec 04
+
+Both this spec and Spec 04 depend on the MLX Swift stack:
+- Spec 03: `mlx-audio-swift` → depends on `mlx-swift`
+- Spec 04: `mlx-swift-examples` → depends on `mlx-swift`
+
+They share the same underlying `MLX` and `MLXRandom` packages. At runtime, only one model (STT or LLM) should be loaded at a time to stay within GPU memory on 8 GB machines. `ModelManager` coordinates this: unload the STT model before loading the LLM, and vice versa.
 
 ## Test Strategy
 
-**Unit tests** (`WhisperKitTranscriptionEngineTests.swift`):
-- `testAvailableModelsReturnsKnownModels` — catalog contains at least 4 entries.
+**Unit tests** (`MLXTranscriptionEngineTests.swift`):
+- `testAvailableModelsReturnsKnownModels` — catalog contains at least 3 entries.
 - `testTranscribeShortFixture` — 5-second fixture → non-empty `plainText`, valid VTT header.
 
 **Job handler tests** (`TranscribeJobHandlerTests.swift`):
@@ -132,7 +147,8 @@ public let modelManager: ModelManager                  // already exists
 
 ## Open Questions / Risks
 
-1. **WhisperKit API stability:** The WhisperKit API changed significantly between 0.8 and 0.9. Pin to `from: "0.9.0"` and test against the exact version. Check whether `WhisperKit.download(variant:)` is the correct API name in 0.9+.
-2. **Model directory path:** WhisperKit expects models in a specific directory structure. Confirm whether `ModelManager.storageDirectory` matches WhisperKit's expected path, or whether `WhisperKitTranscriptionEngine` needs to pass a custom `modelFolder` parameter.
-3. **Background execution:** WhisperKit transcription can take minutes. Ensure `TranscribeJobHandler.execute` is not cancelled by the OS when the app is backgrounded. Consider registering a `BGProcessingTask` for long transcriptions (Spec 06 covers BGTask infrastructure).
-4. **Language detection:** WhisperKit supports auto-detection when `language == nil`. Confirm this works correctly for non-English podcasts.
+1. **mlx-audio-swift maturity:** v0.1.2 as of May 2026. Pin to exact version and test against it. The API may change — isolate behind the `TranscriptionEngine` protocol so swapping is cheap.
+2. **Model loading time:** Loading a 600 MB Parakeet model into GPU takes a few seconds. Lazy-load on first transcription request, not at app launch.
+3. **Memory coordination with LLM:** On 8 GB Macs, the STT model (~600 MB GPU) and LLM model (~2.5 GB GPU) cannot coexist. `ModelManager` must unload one before loading the other. Confirm `mlx-audio-swift` exposes a way to release model memory.
+4. **Audio format support:** Confirm `loadAudioArray` handles MP3 directly or whether we need to convert to WAV first via AVFoundation.
+5. **Segment timestamps:** Verify that Parakeet's output includes word/segment-level timestamps suitable for VTT cue generation. GLM-ASR-Nano may not provide timestamps — document which models support timed output.

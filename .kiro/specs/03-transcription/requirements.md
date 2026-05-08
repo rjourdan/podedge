@@ -1,6 +1,6 @@
 # Spec 03 — Transcription
 
-On-device transcription converts episode audio into a timestamped transcript without sending audio to any external service. The transcript feeds the metadata generation pipeline (Spec 05) and is published alongside the episode as a `<podcast:transcript>` element. Currently no concrete `TranscriptionEngine` exists — `TranscriptionService` is wired to a protocol with no implementation, and `ModelManager` has no model catalog to offer. This spec adds `WhisperKitTranscriptionEngine`, wires it into the job pipeline, and connects the UI.
+On-device transcription converts episode audio into a timestamped transcript without sending audio to any external service. The transcript feeds the metadata generation pipeline (Spec 05) and is published alongside the episode as a `<podcast:transcript>` element. Currently no concrete `TranscriptionEngine` exists — `TranscriptionService` is wired to a protocol with no implementation, and `ModelManager` has no model catalog to offer. This spec adds `MLXTranscriptionEngine` (backed by mlx-audio-swift's STT module), wires it into the job pipeline, and connects the UI.
 
 ## User Stories
 
@@ -11,27 +11,26 @@ On-device transcription converts episode audio into a timestamped transcript wit
 
 ## Functional Requirements
 
-### WhisperKit Dependency
+### mlx-audio-swift Dependency
 
-WHEN `Package.swift` is updated, THE SYSTEM SHALL add `WhisperKit` as a dependency:
+WHEN `Package.swift` is updated, THE SYSTEM SHALL add `mlx-audio-swift` as a dependency:
 ```
-.package(url: "https://github.com/argmaxinc/WhisperKit", from: "0.9.0")
+.package(url: "https://github.com/Blaizzy/mlx-audio-swift.git", from: "0.1.2")
 ```
-and add `"WhisperKit"` to the `PodedgeCore` target's dependencies.
+and add `"MLXAudioSTT"` and `"MLXAudioCore"` to the `PodedgeCore` target's dependencies.
 
-### WhisperKitTranscriptionEngine
+### MLXTranscriptionEngine
 
-WHEN `WhisperKitTranscriptionEngine` is initialized with a model name, THE SYSTEM SHALL load the WhisperKit pipeline for that model from the models directory.
+WHEN `MLXTranscriptionEngine` is initialized with a model identifier, THE SYSTEM SHALL prepare to load the corresponding mlx-audio-swift STT model from the models directory.
 
-WHEN `transcribe(audioURL:language:)` is called, THE SYSTEM SHALL use WhisperKit to transcribe the audio and return a `TranscriptionResult` with `plainText`, `vttContent`, and `segments`.
+WHEN `transcribe(audioURL:language:)` is called, THE SYSTEM SHALL use the loaded STT model to transcribe the audio and return a `TranscriptionResult` with `plainText`, `vttContent`, and `segments`.
 
-WHEN `availableModels()` is called, THE SYSTEM SHALL return a hardcoded catalog of supported WhisperKit model names with their approximate sizes:
-- `openai_whisper-base.en` (~150 MB) — default first-run model
-- `openai_whisper-small.en` (~500 MB)
-- `openai_whisper-medium.en` (~1.5 GB)
-- `openai_whisper-large-v3` (~3 GB)
+WHEN `availableModels()` is called, THE SYSTEM SHALL return a catalog of supported STT models with their approximate sizes:
+- `mlx-community/parakeet-tdt-0.6b-v3` (~600 MB) — default first-run model
+- `mlx-community/GLM-ASR-Nano-2512-4bit` (~1 GB)
+- `mlx-community/Qwen3-ASR-1.7B-bf16` (~3.4 GB)
 
-WHEN `downloadModel(named:progress:)` is called, THE SYSTEM SHALL use WhisperKit's built-in model download API and report progress via the callback.
+WHEN `downloadModel(named:progress:)` is called, THE SYSTEM SHALL download the model from HuggingFace Hub to the local models directory and report progress via the callback.
 
 ### TranscribeJobHandler
 
@@ -52,7 +51,7 @@ WHEN the user reaches onboarding step 4 (model download), THE SYSTEM SHALL displ
 
 WHEN the user taps "Download" for a model, THE SYSTEM SHALL call `modelManager.downloadModel(named:onProgress:)` and show a progress bar.
 
-WHEN the default model (`openai_whisper-base.en`) is not yet downloaded, THE SYSTEM SHALL pre-select it and recommend it as the first-run default.
+WHEN the default model (`mlx-community/parakeet-tdt-0.6b-v3`) is not yet downloaded, THE SYSTEM SHALL pre-select it and recommend it as the first-run default.
 
 WHEN at least one transcription model is downloaded, THE SYSTEM SHALL allow the user to advance past the model download step.
 
@@ -100,15 +99,14 @@ func transcriptAssetIDSetAfterJob() async throws {
 
 ## Non-Functional Requirements
 
-- **Performance:** Transcription must run at ≤ 0.3× realtime on M2+ with the `base.en` model (a 10-minute episode transcribes in ≤ 3 minutes).
-- **Privacy:** Audio files are processed entirely on-device by WhisperKit. No network calls during transcription.
+- **Performance:** Transcription must run at ≤ 0.3× realtime on M2+ with the Parakeet model (a 10-minute episode transcribes in ≤ 3 minutes).
+- **Privacy:** Audio files are processed entirely on-device by MLX. No network calls during transcription.
 - **Reliability:** If the app is killed during transcription, the job resumes on next launch (`.running` → re-executed by `JobScheduler`).
 - **Storage:** Transcript VTT and plain-text files are stored in `~/Library/Application Support/Podedge/transcripts/<episodeID>/`.
 
 ## Out of Scope for v1
 
-- Parakeet or other non-WhisperKit engines.
 - Word-level timestamp granularity in the UI (segments are sufficient).
-- Speaker diarization.
+- Speaker diarization (MLXAudioVAD/Sortformer available for v1.1).
 - Transcript editing UI (display only in v1).
 - Re-transcription with a different model after initial transcription.
