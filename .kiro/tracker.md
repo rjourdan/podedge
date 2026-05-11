@@ -1,6 +1,6 @@
 # Podedge v1 Implementation Tracker — Spec-organized
 
-Last updated: 2026-05-05
+Last updated: 2026-05-09
 
 ## Pre-v1 (Historic)
 
@@ -23,18 +23,18 @@ Work streams WS1–WS8 produced a compilable app shell with fully unit-tested Po
 
 [requirements.md](.kiro/specs/01-composition-root/requirements.md) · [design.md](.kiro/specs/01-composition-root/design.md)
 
-**Status:** ⬜ Not started  
+**Status:** ✅ Complete  
 **Dependencies:** None (prerequisite for all other specs)
 
 | ID | Task | File(s) | Status |
 |----|------|---------|--------|
-| 01.1 | Audit and set `public` on all PodedgeCore types used by the app | Multiple `PodedgeCore/Sources/PodedgeCore/Services/*.swift` | ⬜ |
-| 01.2 | Create `AppServices` class with all service properties | `Podedge/Podedge/AppServices.swift` | ⬜ |
-| 01.3 | Implement `AppServices.bootstrap()` (handler + tool registration, scheduler start) | `Podedge/Podedge/AppServices.swift` | ⬜ |
-| 01.4 | Add `AppServicesKey` environment key and `EnvironmentValues` extension | `Podedge/Podedge/AppServices.swift` | ⬜ |
-| 01.5 | Rewrite `PodedgeApp` to construct `AppServices` and inject via environment | `Podedge/Podedge/PodedgeApp.swift` | ⬜ |
-| 01.6 | Add `handler(for:)` method to `JobScheduler` | `PodedgeCore/Sources/PodedgeCore/Services/JobScheduler.swift` | ⬜ |
-| 01.7 | Write `AppServicesTests` (all job kinds have handlers, bootstrap idempotent) | `PodedgeTests/AppServicesTests.swift` | ⬜ |
+| 01.1 | Audit and set `public` on all PodedgeCore types used by the app | Multiple `PodedgeCore/Sources/PodedgeCore/Services/*.swift` | ✅ |
+| 01.2 | Create `AppServices` class with all service properties | `Podedge/Podedge/AppServices.swift` | ✅ |
+| 01.3 | Implement `AppServices.bootstrap()` (handler + tool registration, scheduler start) | `Podedge/Podedge/AppServices.swift` | ✅ |
+| 01.4 | Add `AppServicesKey` environment key and `EnvironmentValues` extension | `Podedge/Podedge/AppServices.swift` | ✅ |
+| 01.5 | Rewrite `PodedgeApp` to construct `AppServices` and inject via environment | `Podedge/Podedge/PodedgeApp.swift` | ✅ |
+| 01.6 | Add `handler(for:)` method to `JobScheduler` | `PodedgeCore/Sources/PodedgeCore/Services/JobScheduler.swift` | ✅ |
+| 01.7 | Write `AppServicesTests` (all job kinds have handlers, bootstrap idempotent) | `PodedgeTests/AppServicesTests.swift` | ✅ |
 
 ---
 

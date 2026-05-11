@@ -79,6 +79,11 @@ public final class JobScheduler {
         handlers[handler.handledKind] = handler
     }
 
+    /// Returns the registered handler for the given job kind, or `nil`.
+    public func handler(for kind: JobKind) -> (any JobHandler)? {
+        handlers[kind]
+    }
+
     // MARK: - Job Management
 
     /// Inserts a new job into the persistent store.

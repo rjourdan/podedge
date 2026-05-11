@@ -5,6 +5,7 @@
 
 <!--
 Changelog
+- 2026-05-09: Added Composition Root (AppServices) section — Spec 01 complete.
 - 2026-05-05: v1 LLM stack clarified — MLX + Ollama, no cloud. See ADR 0002.
 - 2026-05-05: Codified the split data-access model (reads direct via @Query, writes via ToolBroker). See ADR 0001.
 - 2026-05-01: Initial draft. Based on PodedgeCore source + .kiro/idea/podedge-technical-design.md.
@@ -28,6 +29,16 @@ Podedge is a macOS app that turns a dropped MP3 into a published podcast episode
 4. **Capabilities are protocols.** `PodcastHost`, `LLMProvider`, `TranscriptionEngine`, `AudioPipeline`, `DistributionTarget`, `AnalyticsProvider`, `PromotionRenderer`. Adding a new backend means writing a new conformer, not modifying existing code.
 5. **Work is durable jobs.** Long-running work (ingest, transcription, upload, distribution, analytics refresh) is enqueued in `JobScheduler`, which is SwiftData-backed and resumes across restarts.
 6. **Reads are free, writes are tools.** Views use `@Query` and `@Bindable` freely for reads and transient form state. Any committed write — create, update, delete, upload, publish, post — goes through `ToolBroker`. This is what makes the UI and the Assistant interchangeable callers. See [ADR 0001](../decisions/0001-ui-writes-through-toolbroker.md).
+
+## Composition Root (AppServices)
+
+`AppServices` is the single object that owns every service. It is constructed once in `PodedgeApp` (held in `@State` so SwiftUI reinitialisation doesn't create a second instance) and injected into the SwiftUI environment via `@Environment(\.appServices)`. The `bootstrap()` method registers all job handlers and starts the scheduler; it is idempotent and safe to call more than once. Views never construct services directly — they read from `@Query` and call `ToolBroker` for writes.
+
+Key files:
+- `Podedge/Podedge/AppServices.swift` — owns all services, `bootstrap()`, environment key
+- `Podedge/Podedge/PodedgeApp.swift` — constructs `AppServices`, injects it, calls `shutdown()` on `.background`
+
+See [spec01-composition-root.md](../../.kiro/learnings/spec01-composition-root.md) for implementation decisions.
 
 ## The picture
 

@@ -156,8 +156,9 @@ private struct ShowEditorForm: View {
             }
 
             // Resolve the host binding to show the full RSS feed URL.
+            let bindingID = show.hostBindingID
             if let hostBinding = try? modelContext.fetch(
-                FetchDescriptor<HostBinding>(predicate: #Predicate { $0.id == show.hostBindingID })
+                FetchDescriptor<HostBinding>(predicate: #Predicate { $0.id == bindingID })
             ).first {
                 let feedURL = hostBinding.publicBaseURL
                     .appendingPathComponent(show.feedRemotePath)

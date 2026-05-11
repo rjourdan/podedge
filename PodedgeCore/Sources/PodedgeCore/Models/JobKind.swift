@@ -1,5 +1,5 @@
 /// The kind of work a job performs.
-public enum JobKind: String, Codable, Sendable {
+public enum JobKind: String, Codable, Sendable, CaseIterable {
     /// Import and validate an audio file into the library.
     case ingest
     /// Generate a text transcript from the episode audio.
