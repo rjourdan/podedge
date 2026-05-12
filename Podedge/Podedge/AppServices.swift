@@ -58,7 +58,6 @@ public final class AppServices {
 
         let pipeline: any AudioPipeline = DefaultAudioPipeline()
         self.audioPipeline = pipeline
-        let engine: any TranscriptionEngine = PlaceholderTranscriptionEngine()
         let llmProvider: any LLMProvider = MLXLLMProvider()
         let analyticsProvider: any AnalyticsProvider = PlaceholderAnalyticsProvider()
 
@@ -68,6 +67,7 @@ public final class AppServices {
         let modelsDir = appSupportDir
             .appendingPathComponent("Podedge", isDirectory: true)
             .appendingPathComponent("Models", isDirectory: true)
+        let engine: any TranscriptionEngine = MLXTranscriptionEngine(modelID: "mlx-community/parakeet-tdt-0.6b-v3", modelsDirectory: modelsDir)
         self.modelManager = ModelManager(engine: engine, modelsDirectory: modelsDir)
         self.transcriptionService = TranscriptionService(engine: engine)
 
@@ -133,7 +133,11 @@ public final class AppServices {
         guard !hasBootstrapped else { return }
         hasBootstrapped = true
 
-        for kind in JobKind.allCases {
+        // Register real handlers
+        jobScheduler.registerHandler(TranscribeJobHandler(transcriptionService: transcriptionService))
+
+        // Placeholder handlers for unimplemented job kinds
+        for kind in JobKind.allCases where kind != .transcribe {
             jobScheduler.registerHandler(PlaceholderJobHandler(handledKind: kind))
         }
         jobScheduler.start()
@@ -158,14 +162,6 @@ private struct PlaceholderAudioPipeline: AudioPipeline {
     func waveform(url: URL, sampleCount: Int) async throws -> [Float] { [] }
     func readID3(url: URL) async throws -> ID3Metadata { ID3Metadata() }
     func writeID3(to url: URL, metadata: ID3Metadata) async throws {}
-}
-
-private struct PlaceholderTranscriptionEngine: TranscriptionEngine {
-    func transcribe(audioURL: URL, language: String?) async throws -> TranscriptionResult {
-        TranscriptionResult(plainText: "", vttContent: "", segments: [])
-    }
-    func availableModels() async throws -> [TranscriptionModelInfo] { [] }
-    func downloadModel(named name: String, progress: @Sendable (Double) -> Void) async throws {}
 }
 
 private struct PlaceholderAnalyticsProvider: AnalyticsProvider {

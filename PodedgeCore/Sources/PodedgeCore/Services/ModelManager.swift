@@ -92,7 +92,8 @@ public actor ModelManager {
     /// - Throws: ``PodedgeError/preconditionViolated(reason:)`` if the name contains path traversal characters.
     public func isModelDownloaded(named name: String) throws -> Bool {
         try validateModelName(name)
-        let modelDir = modelsDirectory.appendingPathComponent(name, isDirectory: true)
+        let sanitized = name.replacingOccurrences(of: "/", with: "_")
+        let modelDir = modelsDirectory.appendingPathComponent(sanitized, isDirectory: true)
         var isDir: ObjCBool = false
         return FileManager.default.fileExists(atPath: modelDir.path(percentEncoded: false), isDirectory: &isDir) && isDir.boolValue
     }
@@ -104,7 +105,8 @@ public actor ModelManager {
     ///   path traversal characters, or if the filesystem operation fails.
     public func deleteModel(named name: String) throws {
         try validateModelName(name)
-        let modelDir = modelsDirectory.appendingPathComponent(name, isDirectory: true)
+        let sanitized = name.replacingOccurrences(of: "/", with: "_")
+        let modelDir = modelsDirectory.appendingPathComponent(sanitized, isDirectory: true)
         guard FileManager.default.fileExists(atPath: modelDir.path(percentEncoded: false)) else { return }
         try FileManager.default.removeItem(at: modelDir)
         logger.info("Deleted model: \(name, privacy: .public)")
@@ -133,9 +135,9 @@ public actor ModelManager {
 
     /// Validates that a model name is safe for use as a filesystem path component.
     ///
-    /// Rejects names containing `/`, `\`, or `..` to prevent path traversal.
+    /// Rejects names containing `\` or `..` to prevent path traversal.
     private func validateModelName(_ name: String) throws {
-        if name.contains("/") || name.contains("\\") || name.contains("..") {
+        if name.contains("\\") || name.contains("..") {
             throw PodedgeError.preconditionViolated(reason: "Invalid model name: \(name)")
         }
     }

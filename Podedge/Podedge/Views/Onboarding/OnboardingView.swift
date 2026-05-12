@@ -6,6 +6,7 @@ import PodedgeCore
 struct OnboardingView: View {
     @Binding var hasCompletedOnboarding: Bool
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.appServices) private var appServices
 
     @State private var step: OnboardingStep = .welcome
     @State private var keychainError: String?
@@ -31,6 +32,13 @@ struct OnboardingView: View {
     @State private var hasExistingOP3 = false
     @State private var existingOP3ShowUUID = ""
     @State private var op3Status: String?
+
+    // Model download fields
+    @State private var models: [TranscriptionModelInfo] = []
+    @State private var selectedModel = "mlx-community/parakeet-tdt-0.6b-v3"
+    @State private var downloadProgress: [String: Double] = [:]
+    @State private var isDownloading = false
+    @State private var downloadError: String?
 
     enum OnboardingStep: Int, CaseIterable {
         case welcome, show, s3, op3, models, done
@@ -186,12 +194,85 @@ struct OnboardingView: View {
             Text("Transcription Models")
                 .font(.title2)
                 .fontWeight(.semibold)
-            Text("Podedge uses local AI models for transcription. Models can be downloaded later from Settings → Models.")
+            Text("Podedge uses local AI models for transcription. Download at least one model to continue.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+
+            if let downloadError {
+                Text(downloadError)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            }
+
+            ForEach(models, id: \.name) { model in
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 4) {
+                            Text(model.name)
+                                .font(.callout)
+                            if model.name == "mlx-community/parakeet-tdt-0.6b-v3" {
+                                Text("Recommended")
+                                    .font(.caption2)
+                                    .padding(.horizontal, 4)
+                                    .padding(.vertical, 1)
+                                    .background(.tint.opacity(0.15))
+                                    .clipShape(.capsule)
+                            }
+                        }
+                        Text("~\(model.sizeBytes / 1_000_000) MB")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
+                    Spacer()
+                    if model.isDownloaded {
+                        Label("Downloaded", systemImage: "checkmark.circle.fill")
+                            .font(.caption)
+                            .foregroundStyle(.green)
+                    } else if let progress = downloadProgress[model.name] {
+                        ProgressView(value: progress)
+                            .frame(width: 80)
+                    } else {
+                        Button("Download") {
+                            downloadModel(model.name)
+                        }
+                        .controlSize(.small)
+                        .disabled(isDownloading)
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+
             Label("Models are stored in ~/Library/Application Support/Podedge/Models/", systemImage: "folder")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
+        }
+        .task {
+            await loadModels()
+        }
+    }
+
+    private func loadModels() async {
+        guard let appServices else { return }
+        models = (try? await appServices.modelManager.availableModels()) ?? []
+    }
+
+    private func downloadModel(_ name: String) {
+        guard let appServices else { return }
+        isDownloading = true
+        downloadError = nil
+        Task { @MainActor in
+            do {
+                try await appServices.modelManager.downloadModel(named: name) { fraction in
+                    Task { @MainActor in
+                        downloadProgress[name] = fraction
+                    }
+                }
+                downloadProgress.removeValue(forKey: name)
+                await loadModels()
+            } catch {
+                downloadError = error.localizedDescription
+            }
+            isDownloading = false
         }
     }
 
@@ -242,6 +323,7 @@ struct OnboardingView: View {
     private var nextDisabled: Bool {
         if isSavingHost { return true }
         if step == .show { return showTitle.isEmpty || showAuthor.isEmpty }
+        if step == .models { return !models.contains(where: \.isDownloaded) }
         return false
     }
 

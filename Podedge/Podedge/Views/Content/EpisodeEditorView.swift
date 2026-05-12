@@ -263,19 +263,44 @@ private struct MetadataTab: View {
 
 private struct TranscriptTab: View {
     @Bindable var episode: Episode
+    @Environment(\.modelContext) private var modelContext
+
+    @Query private var jobs: [Job]
+    @State private var vttContent: String?
+
+    private var isTranscribing: Bool {
+        let epID = episode.id
+        return jobs.contains { $0.kind == .transcribe && $0.targetID == epID && ($0.state == .running || $0.state == .pending) }
+    }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 Text("Transcript")
                     .font(.headline)
+
                 if episode.transcriptAssetID != nil {
-                    Label("Transcript available", systemImage: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
+                    if let vttContent {
+                        Text(vttContent)
+                            .font(.system(.caption, design: .monospaced))
+                            .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    } else {
+                        ProgressView()
+                            .task { loadVTT() }
+                    }
+                } else if isTranscribing {
+                    ProgressView("Transcribing…")
+                } else if episode.status == .failed {
+                    ContentUnavailableView {
+                        Label("Transcription Failed", systemImage: "exclamationmark.triangle")
+                    } description: {
+                        Text("The transcription could not be completed. Check Settings → Models to verify your model is downloaded.")
+                    }
                 } else {
-                    Label("No transcript yet", systemImage: "xmark.circle")
+                    Label("No transcript available", systemImage: "xmark.circle")
                         .foregroundStyle(.secondary)
-                    Text("A transcript will be generated during processing.")
+                    Text("Transcription runs automatically after ingest.")
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                 }
@@ -299,6 +324,14 @@ private struct TranscriptTab: View {
             }
             .padding(16)
         }
+    }
+
+    private func loadVTT() {
+        guard let assetID = episode.transcriptAssetID,
+              let asset = try? modelContext.fetch(FetchDescriptor<Asset>(predicate: #Predicate { $0.id == assetID })).first else {
+            return
+        }
+        vttContent = try? String(contentsOf: asset.localURL, encoding: .utf8)
     }
 }
 

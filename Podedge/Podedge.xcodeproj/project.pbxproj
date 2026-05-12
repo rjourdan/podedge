@@ -7,6 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		E804142C2FB363510080BC26 /* MLXAudio in Frameworks */ = {isa = PBXBuildFile; productRef = E804142B2FB363510080BC26 /* MLXAudio */; };
+		E804142E2FB363510080BC26 /* MLXAudioCodecs in Frameworks */ = {isa = PBXBuildFile; productRef = E804142D2FB363510080BC26 /* MLXAudioCodecs */; };
+		E80414302FB363510080BC26 /* MLXAudioSTS in Frameworks */ = {isa = PBXBuildFile; productRef = E804142F2FB363510080BC26 /* MLXAudioSTS */; };
+		E80414322FB363510080BC26 /* MLXAudioSTT in Frameworks */ = {isa = PBXBuildFile; productRef = E80414312FB363510080BC26 /* MLXAudioSTT */; };
 		E8B359722FA4F61C002C76D8 /* PodedgeCore in Frameworks */ = {isa = PBXBuildFile; productRef = E8B359712FA4F61C002C76D8 /* PodedgeCore */; };
 /* End PBXBuildFile section */
 
@@ -56,7 +60,11 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E80414302FB363510080BC26 /* MLXAudioSTS in Frameworks */,
+				E804142E2FB363510080BC26 /* MLXAudioCodecs in Frameworks */,
 				E8B359722FA4F61C002C76D8 /* PodedgeCore in Frameworks */,
+				E80414322FB363510080BC26 /* MLXAudioSTT in Frameworks */,
+				E804142C2FB363510080BC26 /* MLXAudio in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -118,6 +126,10 @@
 			name = Podedge;
 			packageProductDependencies = (
 				E8B359712FA4F61C002C76D8 /* PodedgeCore */,
+				E804142B2FB363510080BC26 /* MLXAudio */,
+				E804142D2FB363510080BC26 /* MLXAudioCodecs */,
+				E804142F2FB363510080BC26 /* MLXAudioSTS */,
+				E80414312FB363510080BC26 /* MLXAudioSTT */,
 			);
 			productName = Podedge;
 			productReference = E8B358CA2FA4F51D002C76D8 /* Podedge.app */;
@@ -203,6 +215,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				E8B359702FA4F61C002C76D8 /* XCLocalSwiftPackageReference "../PodedgeCore" */,
+				E804142A2FB363510080BC26 /* XCRemoteSwiftPackageReference "mlx-audio-swift" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = E8B358CB2FA4F51D002C76D8 /* Products */;
@@ -600,7 +613,38 @@
 		};
 /* End XCLocalSwiftPackageReference section */
 
+/* Begin XCRemoteSwiftPackageReference section */
+		E804142A2FB363510080BC26 /* XCRemoteSwiftPackageReference "mlx-audio-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/Blaizzy/mlx-audio-swift.git";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
+		E804142B2FB363510080BC26 /* MLXAudio */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E804142A2FB363510080BC26 /* XCRemoteSwiftPackageReference "mlx-audio-swift" */;
+			productName = MLXAudio;
+		};
+		E804142D2FB363510080BC26 /* MLXAudioCodecs */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E804142A2FB363510080BC26 /* XCRemoteSwiftPackageReference "mlx-audio-swift" */;
+			productName = MLXAudioCodecs;
+		};
+		E804142F2FB363510080BC26 /* MLXAudioSTS */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E804142A2FB363510080BC26 /* XCRemoteSwiftPackageReference "mlx-audio-swift" */;
+			productName = MLXAudioSTS;
+		};
+		E80414312FB363510080BC26 /* MLXAudioSTT */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E804142A2FB363510080BC26 /* XCRemoteSwiftPackageReference "mlx-audio-swift" */;
+			productName = MLXAudioSTT;
+		};
 		E8B359712FA4F61C002C76D8 /* PodedgeCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = PodedgeCore;
