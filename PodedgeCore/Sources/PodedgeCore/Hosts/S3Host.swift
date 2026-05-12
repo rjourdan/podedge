@@ -140,12 +140,23 @@ public struct S3Host: PodcastHost, Sendable {
 
     // MARK: - Private Helpers
 
-    /// Computes the MD5 hex digest of a file on disk.
+    /// Computes the MD5 hex digest of a file on disk by streaming in chunks.
     ///
     /// MD5 is used here solely for S3 ETag comparison, not for security.
     private func md5Hex(fileAt url: URL) throws -> String {
-        let data = try Data(contentsOf: url)
-        let digest = Insecure.MD5.hash(data: data)
+        let handle = try FileHandle(forReadingFrom: url)
+        defer { handle.closeFile() }
+
+        var hasher = Insecure.MD5()
+        let chunkSize = 1_048_576 // 1 MB
+        while autoreleasepool(invoking: {
+            let chunk = handle.readData(ofLength: chunkSize)
+            guard !chunk.isEmpty else { return false }
+            hasher.update(data: chunk)
+            return true
+        }) {}
+
+        let digest = hasher.finalize()
         return digest.map { String(format: "%02x", $0) }.joined()
     }
 

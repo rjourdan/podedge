@@ -99,7 +99,7 @@ public struct ID3TagService: Sendable {
     ///   - metadata: The ``ID3Metadata`` to write.
     /// - Throws: An error if the file cannot be read or written.
     public func writeTags(to url: URL, metadata: ID3Metadata) throws {
-        var fileData = try Data(contentsOf: url)
+        var fileData = try Data(contentsOf: url, options: .mappedIfSafe)
 
         // Strip existing ID3v2 header if present.
         let existingHeaderSize = id3v2HeaderSize(in: fileData)

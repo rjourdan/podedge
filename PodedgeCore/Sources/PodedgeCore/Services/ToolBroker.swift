@@ -49,6 +49,9 @@ public actor ToolBroker {
         guard let tool = await resolveTool(named: name, caller: caller) else {
             return resolveFailure
         }
+        guard tool.scope == .destructive else {
+            return .failure("Only destructive tools require confirmation")
+        }
         do {
             let output = try await tool.execute(input: input)
             return .success(output)

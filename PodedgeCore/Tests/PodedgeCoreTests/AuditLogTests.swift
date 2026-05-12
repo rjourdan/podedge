@@ -87,6 +87,16 @@ struct AuditLogRedactionTests {
         #expect(!redacted.contains("mySecretValue123"))
         #expect(redacted.contains("[REDACTED]"))
     }
+
+    @Test("Redacts X-Amz-Signature in signed URLs")
+    func redactsSignedURLSignature() {
+        let input = "https://bucket.s3.amazonaws.com/file.mp3?X-Amz-Signature=abc123def456&X-Amz-Credential=AKID/region/s3/aws4_request&X-Amz-Security-Token=FwoGZX"
+        let redacted = AuditLogService.redact(input)
+        #expect(!redacted.contains("abc123def456"))
+        #expect(!redacted.contains("AKID/region/s3/aws4_request"))
+        #expect(!redacted.contains("FwoGZX"))
+        #expect(redacted.contains("[REDACTED]"))
+    }
 }
 
 // MARK: - Pure Model Tests
@@ -168,6 +178,26 @@ struct AuditLogServiceTests {
         #expect(entries.count == 1)
         #expect(entries.first?.inputSummary.contains("secret123") == false)
         #expect(entries.first?.inputSummary.contains("[REDACTED]") == true)
+    }
+
+    @Test("Log redacts outputSummary containing signed URLs")
+    @MainActor
+    func logRedactsOutput() throws {
+        let (service, context) = try makeService()
+        service.log(
+            agentName: "assistant",
+            toolName: "upload",
+            scope: .mutating,
+            inputSummary: "file.mp3",
+            outputSummary: "url: https://bucket.s3.amazonaws.com/ep.mp3?X-Amz-Signature=deadbeef",
+            durationSeconds: 0.2,
+            success: true
+        )
+        try context.save()
+
+        let entries = try service.entries()
+        #expect(entries.first?.outputSummary.contains("deadbeef") == false)
+        #expect(entries.first?.outputSummary.contains("[REDACTED]") == true)
     }
 
     @Test("Query filters by agent name")

@@ -11,7 +11,7 @@ public final class AuditLogService {
         self.modelContext = modelContext
     }
 
-    /// Records a tool invocation, redacting secrets from the input summary.
+    /// Records a tool invocation, redacting secrets from both summaries.
     public func log(
         agentName: String,
         toolName: String,
@@ -26,7 +26,7 @@ public final class AuditLogService {
             toolName: toolName,
             scope: scope,
             inputSummary: Self.redact(inputSummary),
-            outputSummary: outputSummary,
+            outputSummary: Self.redact(outputSummary),
             durationSeconds: durationSeconds,
             success: success
         )
@@ -66,7 +66,7 @@ public final class AuditLogService {
 
     // MARK: - Redaction
 
-    /// Patterns that look like secrets: API keys, tokens, bearer headers, AWS credentials.
+    /// Patterns that look like secrets: API keys, tokens, bearer headers, AWS credentials, signed URLs.
     nonisolated private static let secretPatterns: [NSRegularExpression] = {
         let patterns = [
             #"(?i)(api[_-]?key|token|secret|password|bearer)\s*[:=]\s*\S+"#,
@@ -75,6 +75,7 @@ public final class AuditLogService {
             #"ghp_[A-Za-z0-9]{36,}"#,
             #"AKIA[A-Z0-9]{16}"#,
             #"(?i)aws[_-]?secret[_-]?access[_-]?key\s*[:=]\s*\S+"#,
+            #"(?i)(X-Amz-Signature|X-Amz-Credential|X-Amz-Security-Token)=[^&\s]+"#,
         ]
         return patterns.compactMap { try? NSRegularExpression(pattern: $0) }
     }()
