@@ -1,4 +1,3 @@
-import CryptoKit
 import Foundation
 import os
 import SwiftData
@@ -126,9 +125,7 @@ public final class IngestService {
             try WaveformGenerator.save(waveform: waveformSamples, to: waveformURL)
 
             let waveformSize = try fileByteSize(url: waveformURL)
-            let waveformData = try Data(contentsOf: waveformURL)
-            let waveformDigest = SHA256.hash(data: waveformData)
-            let waveformSHA256 = waveformDigest.map { String(format: "%02x", $0) }.joined()
+            let waveformSHA256 = try await pipeline.sha256(of: waveformURL)
             let waveformAsset = Asset(
                 id: UUID(),
                 kind: .waveform,
@@ -145,7 +142,7 @@ public final class IngestService {
             let transcribeJob = Job(kind: .transcribe, targetID: episodeID)
             try scheduler.enqueue(transcribeJob)
 
-            let metadataJob = Job(kind: .generateMetadata, targetID: episodeID)
+            let metadataJob = Job(kind: .generateMetadata, targetID: episodeID, parentJobID: transcribeJob.id)
             try scheduler.enqueue(metadataJob)
 
             logger.info("Ingest complete for episode \(episodeID)")
@@ -154,6 +151,7 @@ public final class IngestService {
         } catch {
             // Clean up the placeholder episode to avoid orphaned records.
             logger.error("Ingest failed for episode \(episodeID): \(error.localizedDescription, privacy: .public)")
+            try? FileManager.default.removeItem(at: managedAudioDirectory(for: episodeID))
             store.deleteEpisode(episode)
             try? store.save()
             throw error

@@ -56,7 +56,7 @@ public final class AppServices {
         let host = HostService(keychain: keychain)
         self.hostService = host
 
-        let pipeline: any AudioPipeline = PlaceholderAudioPipeline()
+        let pipeline: any AudioPipeline = DefaultAudioPipeline()
         self.audioPipeline = pipeline
         let engine: any TranscriptionEngine = PlaceholderTranscriptionEngine()
         let llmProvider: any LLMProvider = MLXLLMProvider()

@@ -1,6 +1,6 @@
 # Podedge v1 Implementation Tracker — Spec-organized
 
-Last updated: 2026-05-09
+Last updated: 2026-05-12
 
 ## Pre-v1 (Historic)
 
@@ -42,17 +42,17 @@ Work streams WS1–WS8 produced a compilable app shell with fully unit-tested Po
 
 [requirements.md](.kiro/specs/02-audio-ingest/requirements.md) · [design.md](.kiro/specs/02-audio-ingest/design.md)
 
-**Status:** ⬜ Not started  
+**Status:** ✅ Complete  
 **Dependencies:** Spec 01
 
 | ID | Task | File(s) | Status |
 |----|------|---------|--------|
-| 02.1 | Create `DefaultAudioPipeline` composing MP3Validator, AudioProber, WaveformGenerator, ID3TagService, CryptoKit SHA-256 | `PodedgeCore/Sources/PodedgeCore/Services/DefaultAudioPipeline.swift` | ⬜ |
-| 02.2 | Wire `DefaultAudioPipeline` into `AppServices` | `Podedge/Podedge/AppServices.swift` | ⬜ |
-| 02.3 | Replace `EpisodeListView.importAudio` with `appServices.ingestService.ingest(fileURL:show:)` | `Podedge/Podedge/Views/Sidebar/EpisodeListView.swift` | ⬜ |
-| 02.4 | Add ingest error alert to `EpisodeListView` | `Podedge/Podedge/Views/Sidebar/EpisodeListView.swift` | ⬜ |
-| 02.5 | Write `DefaultAudioPipelineTests` (sha256 property test, probe, waveform) | `PodedgeCoreTests/DefaultAudioPipelineTests.swift` | ⬜ |
-| 02.6 | Write `IngestServiceIntegrationTests` (creates episode+assets, enqueues jobs, failure cleanup) | `PodedgeCoreTests/IngestServiceIntegrationTests.swift` | ⬜ |
+| 02.1 | Create `DefaultAudioPipeline` composing MP3Validator, AudioProber, WaveformGenerator, ID3TagService, CryptoKit SHA-256 | `PodedgeCore/Sources/PodedgeCore/Services/DefaultAudioPipeline.swift` | ✅ |
+| 02.2 | Wire `DefaultAudioPipeline` into `AppServices` | `Podedge/Podedge/AppServices.swift` | ✅ |
+| 02.3 | Replace `EpisodeListView.importAudio` with `appServices.ingestService.ingest(fileURL:show:)` | `Podedge/Podedge/Views/Sidebar/EpisodeListView.swift` | ✅ |
+| 02.4 | Add ingest error alert to `EpisodeListView` | `Podedge/Podedge/Views/Sidebar/EpisodeListView.swift` | ✅ |
+| 02.5 | Write `DefaultAudioPipelineTests` (sha256 property test, probe, waveform) | `PodedgeCoreTests/DefaultAudioPipelineTests.swift` | ✅ |
+| 02.6 | Write `IngestServiceIntegrationTests` (creates episode+assets, enqueues jobs, failure cleanup) | `PodedgeCoreTests/IngestServiceIntegrationTests.swift` | ✅ |
 
 ---
 

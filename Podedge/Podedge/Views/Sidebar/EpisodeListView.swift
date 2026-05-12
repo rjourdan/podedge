@@ -11,10 +11,13 @@ struct EpisodeListView: View {
 
     @Query(sort: \Episode.createdAt, order: .reverse) private var allEpisodes: [Episode]
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.appServices) private var appServices
 
     @State private var isDropTargeted = false
     @State private var showingDeleteConfirmation = false
     @State private var pendingDeleteOffsets: IndexSet?
+    @State private var ingestError: Error?
+    @State private var showingIngestError = false
 
     /// Episodes filtered to the selected show.
     private var episodes: [Episode] {
@@ -60,6 +63,11 @@ struct EpisodeListView: View {
         } message: {
             Text("This action cannot be undone.")
         }
+        .alert("Import Failed", isPresented: $showingIngestError) {
+            Button("OK", role: .cancel) { ingestError = nil }
+        } message: {
+            Text(ingestError?.localizedDescription ?? "An unknown error occurred.")
+        }
     }
 
     private func handleDrop(_ providers: [NSItemProvider]) -> Bool {
@@ -80,57 +88,22 @@ struct EpisodeListView: View {
         return true
     }
 
-    /// Copies the dropped MP3 into the app's library and creates a draft Episode.
+    /// Ingests a dropped audio file via `IngestService`, creating an episode with follow-up jobs.
     private func importAudio(from tempURL: URL) {
-        guard let showID = selectedShowID else { return }
-
-        // Resolve the show from its PersistentIdentifier.
+        guard let showID = selectedShowID,
+              let services = appServices else { return }
         guard let show = modelContext.model(for: showID) as? Show else { return }
-
-        // Destination: App Support / Podedge / Audio / <uuid>.mp3
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        let audioDir = appSupport.appendingPathComponent("Podedge/Audio", isDirectory: true)
-        try? FileManager.default.createDirectory(at: audioDir, withIntermediateDirectories: true)
-
-        let assetID = UUID()
-        let ext = tempURL.pathExtension.isEmpty ? "mp3" : tempURL.pathExtension
-        let destURL = audioDir.appendingPathComponent("\(assetID.uuidString).\(ext)")
-
-        do {
-            try FileManager.default.moveItem(at: tempURL, to: destURL)
-        } catch {
-            PodedgeLogger.ingest.error("Failed to move dropped file: \(error.localizedDescription)")
-            return
+        Task { @MainActor in
+            do {
+                let episode = try await services.ingestService.ingest(fileURL: tempURL, show: show)
+                selectedEpisodeID = episode.persistentModelID
+            } catch {
+                ingestError = error
+                showingIngestError = true
+            }
+            // Clean up temp file
+            try? FileManager.default.removeItem(at: tempURL)
         }
-
-        let fileSize = (try? FileManager.default.attributesOfItem(atPath: destURL.path(percentEncoded: false))[.size] as? Int64) ?? 0
-
-        // Create Asset.
-        let asset = Asset(
-            id: assetID,
-            kind: .audioOriginal,
-            localURL: destURL,
-            sha256: "",  // Full ingest pipeline computes this later.
-            byteSize: fileSize,
-            contentType: "audio/mpeg"
-        )
-        modelContext.insert(asset)
-
-        // Create Episode with the filename (minus extension) as a draft title.
-        let title = tempURL.deletingPathExtension().lastPathComponent
-            .replacingOccurrences(of: "[-_]", with: " ", options: .regularExpression)
-        let episode = Episode(
-            show: show,
-            title: title,
-            originalAssetID: assetID,
-            status: .draft
-        )
-        modelContext.insert(episode)
-
-        // Select the new episode.
-        selectedEpisodeID = episode.persistentModelID
-
-        PodedgeLogger.ingest.info("Created draft episode '\(title)' from dropped file")
     }
 }
 
