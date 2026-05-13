@@ -45,6 +45,7 @@ enum TestDatabase {
         // Delete leaf entities first, then parents.
         for obj in try context.fetch(FetchDescriptor<AnalyticsSnapshot>()) { context.delete(obj) }
         for obj in try context.fetch(FetchDescriptor<DistributionRecord>()) { context.delete(obj) }
+        for obj in try context.fetch(FetchDescriptor<EpisodeSuggestions>()) { context.delete(obj) }
         for obj in try context.fetch(FetchDescriptor<Episode>()) { context.delete(obj) }
         for obj in try context.fetch(FetchDescriptor<Job>()) { context.delete(obj) }
         for obj in try context.fetch(FetchDescriptor<Asset>()) { context.delete(obj) }

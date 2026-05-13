@@ -1,9 +1,13 @@
 import SwiftUI
+import SwiftData
 import PodedgeCore
 
 /// Promotion tab within the episode editor — generates social media blurbs.
 struct PromotionTabView: View {
     let episode: Episode
+
+    @Query private var allSuggestions: [EpisodeSuggestions]
+    @Environment(\.appServices) private var appServices
 
     @State private var selectedPlatform = "x"
     @State private var generatedText = ""
@@ -17,6 +21,11 @@ struct PromotionTabView: View {
         ("threads", "Threads", 500),
         ("linkedin", "LinkedIn", 3000),
     ]
+
+    /// Returns the suggestions matching this episode, if any exist.
+    private var suggestions: EpisodeSuggestions? {
+        allSuggestions.first { $0.episodeID == episode.id }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -56,12 +65,21 @@ struct PromotionTabView: View {
             }
 
             HStack {
-                // TODO: Wire to SocialBlurbRenderer via ToolBroker once WS5 (LLM integration) is complete.
                 Button("Generate Blurb") {
-                    generatedText = "Check out \"\(episode.title)\" — our latest episode! 🎙️"
+                    if let suggestions {
+                        generatedText = blurb(for: selectedPlatform, from: suggestions)
+                    } else {
+                        // TODO: Route through ToolBroker once Spec 08 (Tool Registry Wiring) is complete.
+                        Task {
+                            guard let services = appServices else { return }
+                            let job = Job(kind: .generateMetadata, targetID: episode.id)
+                            let context = services.modelContainer.mainContext
+                            context.insert(job)
+                            try? context.save()
+                        }
+                    }
                 }
                 .disabled(isGenerating)
-                .help("AI-powered blurb generation requires WS5 (LLM integration).")
                 .accessibilityLabel("Generate social media blurb")
 
                 Spacer()
@@ -77,5 +95,28 @@ struct PromotionTabView: View {
             }
         }
         .padding()
+        .onChange(of: selectedPlatform) { _, newValue in
+            if let suggestions {
+                generatedText = blurb(for: newValue, from: suggestions)
+            }
+        }
+        .onAppear {
+            if generatedText.isEmpty, let suggestions {
+                generatedText = blurb(for: selectedPlatform, from: suggestions)
+            }
+        }
+    }
+
+    // MARK: - Helpers
+
+    private func blurb(for platform: String, from suggestions: EpisodeSuggestions) -> String {
+        switch platform {
+        case "x": return suggestions.blurbTwitter
+        case "bluesky": return suggestions.blurbBluesky
+        case "mastodon": return suggestions.blurbMastodon
+        case "threads": return suggestions.blurbThreads
+        case "linkedin": return suggestions.blurbLinkedIn
+        default: return ""
+        }
     }
 }

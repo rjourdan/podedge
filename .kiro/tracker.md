@@ -1,6 +1,6 @@
 # Podedge v1 Implementation Tracker — Spec-organized
 
-Last updated: 2026-05-12
+Last updated: 2026-05-13
 
 ## Pre-v1 (Historic)
 
@@ -105,19 +105,19 @@ Work streams WS1–WS8 produced a compilable app shell with fully unit-tested Po
 
 [requirements.md](.kiro/specs/05-metadata-generation/requirements.md) · [design.md](.kiro/specs/05-metadata-generation/design.md)
 
-**Status:** ⬜ Not started  
+**Status:** ✅ Complete  
 **Dependencies:** Spec 03, Spec 04
 
 | ID | Task | File(s) | Status |
 |----|------|---------|--------|
-| 05.1 | Create `EpisodeSuggestions` SwiftData model | `PodedgeCore/Sources/PodedgeCore/Models/EpisodeSuggestions.swift` | ⬜ |
-| 05.2 | Add `EpisodeSuggestions` to `PodedgeSchema` | `PodedgeCore/Sources/PodedgeCore/Models/ModelContainerSetup.swift` | ⬜ |
-| 05.3 | Create `GenerateMetadataJobHandler` | `PodedgeCore/Sources/PodedgeCore/Services/GenerateMetadataJobHandler.swift` | ⬜ |
-| 05.4 | Register `GenerateMetadataJobHandler` in `AppServices.bootstrap()` | `Podedge/Podedge/AppServices.swift` | ⬜ |
-| 05.5 | Update `EpisodeEditorView` Metadata tab with suggestions + Apply/Regenerate | `Podedge/Podedge/Views/Content/EpisodeEditorView.swift` | ⬜ |
-| 05.6 | Update `EpisodeEditorView` Chapters tab with suggested chapters + Apply All | `Podedge/Podedge/Views/Content/EpisodeEditorView.swift` | ⬜ |
-| 05.7 | Update `PromotionTabView` to show blurbs from `EpisodeSuggestions` | `Podedge/Podedge/Views/Components/PromotionTabView.swift` | ⬜ |
-| 05.8 | Write `GenerateMetadataJobHandlerTests` | `PodedgeCoreTests/GenerateMetadataJobHandlerTests.swift` | ⬜ |
+| 05.1 | Create `EpisodeSuggestions` SwiftData model | `PodedgeCore/Sources/PodedgeCore/Models/EpisodeSuggestions.swift` | ✅ |
+| 05.2 | Add `EpisodeSuggestions` to `PodedgeSchema` | `PodedgeCore/Sources/PodedgeCore/Models/ModelContainerSetup.swift` | ✅ |
+| 05.3 | Create `GenerateMetadataJobHandler` | `PodedgeCore/Sources/PodedgeCore/Services/GenerateMetadataJobHandler.swift` | ✅ |
+| 05.4 | Register `GenerateMetadataJobHandler` in `AppServices.bootstrap()` | `Podedge/Podedge/AppServices.swift` | ✅ |
+| 05.5 | Update `EpisodeEditorView` Metadata tab with suggestions + Apply/Regenerate | `Podedge/Podedge/Views/Content/EpisodeEditorView.swift` | ✅ |
+| 05.6 | Update `EpisodeEditorView` Chapters tab with suggested chapters + Apply All | `Podedge/Podedge/Views/Content/EpisodeEditorView.swift` | ✅ |
+| 05.7 | Update `PromotionTabView` to show blurbs from `EpisodeSuggestions` | `Podedge/Podedge/Views/Components/PromotionTabView.swift` | ✅ |
+| 05.8 | Write `GenerateMetadataJobHandlerTests` (property + unit tests) | `PodedgeCoreTests/GenerateMetadataJobHandlerTests.swift` | ✅ |
 
 ---
 

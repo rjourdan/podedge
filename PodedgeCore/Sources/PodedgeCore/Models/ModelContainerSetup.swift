@@ -15,6 +15,7 @@ public enum PodedgeSchema {
         Job.self,
         AnalyticsSnapshot.self,
         AgentAuditEntry.self,
+        EpisodeSuggestions.self,
     ]
 
     /// Creates a ``ModelContainer`` configured for the Podedge schema.

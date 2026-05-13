@@ -103,8 +103,14 @@ struct EpisodeEditorView: View {
 private struct MetadataTab: View {
     @Bindable var episode: Episode
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.appServices) private var appServices
 
+    @Query private var allSuggestions: [EpisodeSuggestions]
     @State private var showingCoverPicker = false
+
+    private var suggestions: EpisodeSuggestions? {
+        allSuggestions.first { $0.episodeID == episode.id }
+    }
 
     var body: some View {
         ScrollView {
@@ -201,6 +207,73 @@ private struct MetadataTab: View {
                         }
                     }
                 }
+
+                // MARK: Suggestions
+
+                if let suggestions {
+                    Divider()
+
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Suggestions")
+                            .font(.headline)
+
+                        suggestionRow(
+                            label: "Title",
+                            current: episode.title,
+                            suggested: suggestions.suggestedTitle
+                        ) {
+                            episode.title = suggestions.suggestedTitle
+                        }
+
+                        suggestionRow(
+                            label: "Subtitle",
+                            current: episode.subtitle ?? "",
+                            suggested: suggestions.suggestedSubtitle
+                        ) {
+                            episode.subtitle = suggestions.suggestedSubtitle
+                        }
+
+                        suggestionRow(
+                            label: "Description",
+                            current: episode.summary,
+                            suggested: suggestions.suggestedDescriptionHTML
+                        ) {
+                            episode.summary = suggestions.suggestedDescriptionHTML
+                        }
+
+                        // Keywords (informational only)
+                        if !suggestions.keywords.isEmpty {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Keywords")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                FlowLayout(spacing: 6) {
+                                    ForEach(suggestions.keywords, id: \.self) { keyword in
+                                        Text(keyword)
+                                            .font(.caption)
+                                            .padding(.horizontal, 8)
+                                            .padding(.vertical, 4)
+                                            .background(.fill.tertiary)
+                                            .clipShape(.capsule)
+                                    }
+                                }
+                            }
+                        }
+
+                        Button("Regenerate") {
+                            // TODO: Route through ToolBroker once Spec 08 (Tool Registry Wiring) is complete.
+                            Task {
+                                guard let services = appServices else { return }
+                                let job = Job(kind: .generateMetadata, targetID: episode.id)
+                                let context = services.modelContainer.mainContext
+                                context.insert(job)
+                                try? context.save()
+                            }
+                        }
+                        .controlSize(.small)
+                        .accessibilityLabel("Regenerate metadata suggestions")
+                    }
+                }
             }
             .padding(16)
         }
@@ -257,6 +330,32 @@ private struct MetadataTab: View {
         modelContext.insert(asset)
         episode.coverArtAssetID = assetID
     }
+
+    private func suggestionRow(
+        label: String,
+        current: String,
+        suggested: String,
+        onApply: @escaping () -> Void
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(label)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Button("Apply") { onApply() }
+                    .controlSize(.mini)
+                    .buttonStyle(.bordered)
+                    .accessibilityLabel("Apply suggested \(label.lowercased())")
+            }
+            Text(suggested)
+                .font(.callout)
+                .padding(8)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(.fill.tertiary)
+                .clipShape(.rect(cornerRadius: 6))
+        }
+    }
 }
 
 // MARK: - Transcript & Chapters Tab
@@ -266,7 +365,12 @@ private struct TranscriptTab: View {
     @Environment(\.modelContext) private var modelContext
 
     @Query private var jobs: [Job]
+    @Query private var allSuggestions: [EpisodeSuggestions]
     @State private var vttContent: String?
+
+    private var suggestions: EpisodeSuggestions? {
+        allSuggestions.first { $0.episodeID == episode.id }
+    }
 
     private var isTranscribing: Bool {
         let epID = episode.id
@@ -321,6 +425,36 @@ private struct TranscriptTab: View {
                 Text("Paste JSON Chapters format or leave empty for auto-generation.")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
+
+                // MARK: Suggested Chapters
+
+                if let chapters = suggestions?.chapters, !chapters.isEmpty {
+                    Divider()
+                    HStack {
+                        Text("Suggested Chapters")
+                            .font(.headline)
+                        Spacer()
+                        Button("Apply All") {
+                            let encoder = JSONEncoder()
+                            if let data = try? encoder.encode(chapters),
+                               let json = String(data: data, encoding: .utf8) {
+                                episode.chaptersJSON = json
+                            }
+                        }
+                        .controlSize(.small)
+                        .accessibilityLabel("Apply all suggested chapters")
+                    }
+                    ForEach(Array(chapters.enumerated()), id: \.offset) { _, chapter in
+                        HStack {
+                            Text(formatTime(chapter.startTime))
+                                .font(.system(.caption, design: .monospaced))
+                                .foregroundStyle(.secondary)
+                            Text(chapter.title)
+                                .font(.callout)
+                            Spacer()
+                        }
+                    }
+                }
             }
             .padding(16)
         }
@@ -333,6 +467,12 @@ private struct TranscriptTab: View {
         }
         vttContent = try? String(contentsOf: asset.localURL, encoding: .utf8)
     }
+
+    private func formatTime(_ seconds: Double) -> String {
+        let mins = Int(seconds) / 60
+        let secs = Int(seconds) % 60
+        return String(format: "%02d:%02d", mins, secs)
+    }
 }
 
 // MARK: - Publish Tab
@@ -341,6 +481,7 @@ private struct PublishTab: View {
     let episode: Episode
 
     @Environment(ConfirmationCoordinator.self) private var coordinator
+    @Environment(\.appServices) private var appServices
     @State private var isPublishing = false
     @State private var publishError: String?
 
@@ -403,10 +544,11 @@ private struct PublishTab: View {
         defer { isPublishing = false }
         publishError = nil
 
+        guard let services = appServices else { return }
         coordinator.requestConfirmation(
             toolName: "publish_episode",
             input: Data(),
-            broker: ToolBroker(registry: ToolRegistry()),
+            broker: services.toolBroker,
             caller: AppCaller()
         )
     }
@@ -415,4 +557,49 @@ private struct PublishTab: View {
 /// Default app-level tool caller with full capability tier.
 struct AppCaller: ToolCaller {
     var capabilityTier: CapabilityTier { .full }
+}
+
+// MARK: - FlowLayout
+
+/// A simple wrapping layout that arranges subviews left-to-right, wrapping to new lines.
+private struct FlowLayout: Layout {
+    var spacing: CGFloat = 6
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let maxWidth = proposal.width ?? .infinity
+        var currentX: CGFloat = 0
+        var currentY: CGFloat = 0
+        var lineHeight: CGFloat = 0
+
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if currentX + size.width > maxWidth, currentX > 0 {
+                currentX = 0
+                currentY += lineHeight + spacing
+                lineHeight = 0
+            }
+            lineHeight = max(lineHeight, size.height)
+            currentX += size.width + spacing
+        }
+
+        return CGSize(width: maxWidth, height: currentY + lineHeight)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var currentX: CGFloat = bounds.minX
+        var currentY: CGFloat = bounds.minY
+        var lineHeight: CGFloat = 0
+
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if currentX + size.width > bounds.maxX, currentX > bounds.minX {
+                currentX = bounds.minX
+                currentY += lineHeight + spacing
+                lineHeight = 0
+            }
+            subview.place(at: CGPoint(x: currentX, y: currentY), proposal: .unspecified)
+            lineHeight = max(lineHeight, size.height)
+            currentX += size.width + spacing
+        }
+    }
 }

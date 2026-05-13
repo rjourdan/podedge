@@ -8,7 +8,7 @@ public enum PodedgeError: LocalizedError, Sendable {
     case keychainFailure(reason: String)
     case jobFailed(jobID: UUID, reason: String)
     case hostUnreachable(reason: String)
-    case notFound(entity: String, id: String)
+    case notFound(entity: String, id: String = "")
     case preconditionViolated(reason: String)
     case transcriptionFailed(reason: String)
     case llmFailed(reason: String)
@@ -24,7 +24,11 @@ public enum PodedgeError: LocalizedError, Sendable {
         case .keychainFailure(let reason): "Keychain error: \(reason)"
         case .jobFailed(let id, let reason): "Job \(id) failed: \(reason)"
         case .hostUnreachable(let reason): "Host unreachable: \(reason)"
-        case .notFound(let entity, let id): "\(entity) not found: \(id)"
+        case .notFound(let entity, let id):
+            if id.isEmpty {
+                return "\(entity) not found"
+            }
+            return "\(entity) not found: \(id)"
         case .preconditionViolated(let reason): "Precondition violated: \(reason)"
         case .transcriptionFailed(let reason): "Transcription failed: \(reason)"
         case .llmFailed(let reason): "LLM failed: \(reason)"

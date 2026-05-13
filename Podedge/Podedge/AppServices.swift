@@ -164,9 +164,10 @@ public final class AppServices {
 
         // Register real handlers
         jobScheduler.registerHandler(TranscribeJobHandler(transcriptionService: transcriptionService))
+        jobScheduler.registerHandler(GenerateMetadataJobHandler(metadataService: metadataGenerationService))
 
         // Placeholder handlers for unimplemented job kinds
-        for kind in JobKind.allCases where kind != .transcribe {
+        for kind in JobKind.allCases where kind != .transcribe && kind != .generateMetadata {
             jobScheduler.registerHandler(PlaceholderJobHandler(handledKind: kind))
         }
         jobScheduler.start()
