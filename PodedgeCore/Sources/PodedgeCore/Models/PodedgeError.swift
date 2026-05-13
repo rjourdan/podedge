@@ -14,6 +14,7 @@ public enum PodedgeError: LocalizedError, Sendable {
     case llmFailed(reason: String)
     case distributionFailed(target: String, reason: String)
     case analyticsUnavailable(reason: String)
+    case ollamaUnreachable(reason: String)
 
     public var errorDescription: String? {
         switch self {
@@ -29,6 +30,7 @@ public enum PodedgeError: LocalizedError, Sendable {
         case .llmFailed(let reason): "LLM failed: \(reason)"
         case .distributionFailed(let target, let reason): "Distribution to \(target) failed: \(reason)"
         case .analyticsUnavailable(let reason): "Analytics unavailable: \(reason)"
+        case .ollamaUnreachable(let reason): "Ollama unreachable: \(reason)"
         }
     }
 }

@@ -33,6 +33,9 @@ struct OnboardingView: View {
     @State private var existingOP3ShowUUID = ""
     @State private var op3Status: String?
 
+    // AI provider fields
+    @State private var aiProviderComplete = false
+
     // Model download fields
     @State private var models: [TranscriptionModelInfo] = []
     @State private var selectedModel = "mlx-community/parakeet-tdt-0.6b-v3"
@@ -41,7 +44,7 @@ struct OnboardingView: View {
     @State private var downloadError: String?
 
     enum OnboardingStep: Int, CaseIterable {
-        case welcome, show, s3, op3, models, done
+        case welcome, show, s3, op3, models, aiProvider, done
     }
 
     var body: some View {
@@ -82,6 +85,7 @@ struct OnboardingView: View {
                 case .s3: s3Step
                 case .op3: op3Step
                 case .models: modelsStep
+                case .aiProvider: aiProviderStep
                 case .done: doneStep
                 }
             }
@@ -274,6 +278,10 @@ struct OnboardingView: View {
             }
             isDownloading = false
         }
+    }
+
+    private var aiProviderStep: some View {
+        AIProviderPickerView(isComplete: $aiProviderComplete)
     }
 
     private var doneStep: some View {

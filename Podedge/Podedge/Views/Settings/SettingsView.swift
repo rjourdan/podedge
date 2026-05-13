@@ -14,6 +14,8 @@ struct SettingsView: View {
                 .tabItem { Label("Analytics", systemImage: "chart.bar") }
             ModelsSettingsTab()
                 .tabItem { Label("Models", systemImage: "cpu") }
+            LLMProvidersSettingsTab()
+                .tabItem { Label("LLM Providers", systemImage: "brain") }
             DistributionSettingsTab()
                 .tabItem { Label("Distribution", systemImage: "globe") }
             AboutSettingsTab()
@@ -315,6 +317,105 @@ private struct ModelsSettingsTab: View {
             }
         }
         .formStyle(.grouped)
+    }
+}
+
+// MARK: - LLM Providers
+
+private struct LLMProvidersSettingsTab: View {
+    @AppStorage("llm.provider.activeID") private var activeID = ""
+    @AppStorage("llm.provider.modelID") private var modelID = ""
+    @State private var ollamaModels: [OllamaModelInfo] = []
+    @State private var connectionStatus: String?
+    @State private var isTesting = false
+    @Environment(\.appServices) private var appServices
+
+    var body: some View {
+        Form {
+            Section("Active Provider") {
+                LabeledContent("Provider") {
+                    Text(activeID.isEmpty ? "Not configured" : activeID.uppercased())
+                        .foregroundStyle(activeID.isEmpty ? .secondary : .primary)
+                }
+                LabeledContent("Model") {
+                    Text(modelID.isEmpty ? "None" : modelID)
+                        .font(.caption.monospaced())
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                }
+            }
+
+            Section("Change Provider") {
+                Picker("Provider", selection: $activeID) {
+                    Text("None").tag("")
+                    Text("MLX (built-in)").tag("mlx")
+                    Text("Ollama (local service)").tag("ollama")
+                }
+                .pickerStyle(.segmented)
+
+                if activeID == "mlx" {
+                    Picker("Model", selection: $modelID) {
+                        Text("Gemma 4 E4B (4-bit)").tag("mlx-community/gemma-4-e4b-it-4bit-MAD")
+                        Text("Qwen 3 8B (4-bit DWQ)").tag("mlx-community/Qwen3-8B-4bit-DWQ-053125")
+                        Text("Mistral Small 24B (4-bit)").tag("mlx-community/Mistral-Small-24B-Instruct-2501-4bit")
+                    }
+                } else if activeID == "ollama" {
+                    if ollamaModels.isEmpty {
+                        Text("No models found. Is Ollama running?")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Picker("Model", selection: $modelID) {
+                            ForEach(ollamaModels, id: \.name) { model in
+                                Text(model.name).tag(model.name)
+                            }
+                        }
+                    }
+                    Button("Refresh Models") { fetchOllamaModels() }
+                        .controlSize(.small)
+                }
+            }
+
+            if activeID == "ollama" {
+                Section("Connection") {
+                    HStack {
+                        Button("Test Connection") { testConnection() }
+                            .disabled(isTesting)
+                        if let connectionStatus {
+                            Text(connectionStatus)
+                                .font(.caption)
+                                .foregroundStyle(connectionStatus.contains("OK") ? .green : .red)
+                        }
+                    }
+                }
+            }
+        }
+        .formStyle(.grouped)
+        .task {
+            if activeID == "ollama" { fetchOllamaModels() }
+        }
+    }
+
+    private func fetchOllamaModels() {
+        guard let appServices else { return }
+        Task { @MainActor in
+            ollamaModels = (try? await appServices.modelManager.availableOllamaModels()) ?? []
+        }
+    }
+
+    private func testConnection() {
+        guard let appServices else { return }
+        isTesting = true
+        connectionStatus = nil
+        Task { @MainActor in
+            do {
+                _ = try await appServices.modelManager.availableOllamaModels()
+                connectionStatus = "OK — Ollama is reachable"
+            } catch {
+                connectionStatus = "Failed: \(error.localizedDescription)"
+            }
+            isTesting = false
+        }
     }
 }
 

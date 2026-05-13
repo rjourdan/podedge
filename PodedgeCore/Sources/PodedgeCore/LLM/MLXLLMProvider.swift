@@ -1,34 +1,22 @@
 import Foundation
+import MLXLMCommon
+import LLM
 
-/// A placeholder ``LLMProvider`` for on-device inference via MLX-Swift.
-///
-/// **This is a stub.** Every method throws ``PodedgeError/llmFailed(reason:)``
-/// because the `mlx-swift` package is not yet added as a dependency.
-///
-/// ## Wiring instructions
-///
-/// 1. Add `mlx-swift` to `Package.swift`:
-///    ```swift
-///    .package(url: "https://github.com/ml-explore/mlx-swift", from: "0.18.0")
-///    ```
-/// 2. Add the product dependency to the `PodedgeCore` target.
-/// 3. Replace the stub implementations below with real MLX inference calls.
-///
-/// - TODO: Wire mlx-swift dependency and implement real inference (WS5 follow-up).
-public struct MLXLLMProvider: LLMProvider, Sendable {
-
-    /// The model identifier (e.g. `"mlx-community/Llama-3.2-3B-Instruct-4bit"`).
+/// On-device LLM inference via MLX.
+public actor MLXLLMProvider: LLMProvider {
     public let modelID: String
+    public var modelsDirectory: URL?
+    private var container: ModelContainer?
 
-    /// Creates a stub MLX provider for the given model.
-    ///
-    /// - Parameter modelID: The Hugging Face model identifier.
-    public init(modelID: String = "mlx-community/Llama-3.2-3B-Instruct-4bit") {
+    public init(modelID: String, modelsDirectory: URL? = nil) {
         self.modelID = modelID
+        self.modelsDirectory = modelsDirectory
     }
 
-    private var stubError: PodedgeError {
-        .llmFailed(reason: "MLX provider not yet linked — add mlx-swift dependency to Package.swift")
+    /// Loads the model from a local directory.
+    public func loadModel(from directory: URL) async throws {
+        let config = ModelConfiguration(id: modelID, directory: directory)
+        container = try await LLM.loadModelContainer(configuration: config)
     }
 
     public func complete(
@@ -36,7 +24,34 @@ public struct MLXLLMProvider: LLMProvider, Sendable {
         systemPrompt: String?,
         maxTokens: Int
     ) async throws -> LLMResponse {
-        throw stubError
+        let container = try await requireLoadedOrLazyLoad()
+        let messages: [[String: String]]
+        if let systemPrompt {
+            messages = [["role": "system", "content": systemPrompt], ["role": "user", "content": prompt]]
+        } else {
+            messages = [["role": "user", "content": prompt]]
+        }
+        let input = try await container.perform { context, model in
+            try await context.processor.prepare(input: .init(messages: messages))
+        }
+        let params = GenerateParameters(maxTokens: maxTokens)
+        var output = ""
+        var outputTokens = 0
+        let result = try await container.perform { context, model in
+            try MLXLMCommon.generate(input: input, parameters: params, context: context) { tokens in
+                outputTokens = tokens.count
+                if let text = context.tokenizer.decode(tokens: tokens) {
+                    output = text
+                }
+                return tokens.count >= maxTokens ? .stop : .more
+            }
+        }
+        return LLMResponse(
+            text: output,
+            inputTokens: result.promptTokenCount,
+            outputTokens: outputTokens,
+            finishReason: outputTokens >= maxTokens ? .length : .stop
+        )
     }
 
     public func stream(
@@ -45,7 +60,36 @@ public struct MLXLLMProvider: LLMProvider, Sendable {
         maxTokens: Int
     ) -> AsyncThrowingStream<LLMStreamChunk, Error> {
         AsyncThrowingStream { continuation in
-            continuation.finish(throwing: stubError)
+            let task = Task {
+                do {
+                    let container = try await self.requireLoadedOrLazyLoad()
+                    let messages: [[String: String]]
+                    if let systemPrompt {
+                        messages = [["role": "system", "content": systemPrompt], ["role": "user", "content": prompt]]
+                    } else {
+                        messages = [["role": "user", "content": prompt]]
+                    }
+                    let input = try await container.perform { context, model in
+                        try await context.processor.prepare(input: .init(messages: messages))
+                    }
+                    let params = GenerateParameters(maxTokens: maxTokens)
+                    _ = try await container.perform { context, model in
+                        try MLXLMCommon.generate(input: input, parameters: params, context: context) { tokens in
+                            if Task.isCancelled { return .stop }
+                            if let text = context.tokenizer.decode(tokens: tokens) {
+                                let isComplete = tokens.count >= maxTokens
+                                continuation.yield(LLMStreamChunk(text: text, isComplete: isComplete))
+                                if isComplete { return .stop }
+                            }
+                            return .more
+                        }
+                    }
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: PodedgeError.llmFailed(reason: error.localizedDescription))
+                }
+            }
+            continuation.onTermination = { @Sendable _ in task.cancel() }
         }
     }
 
@@ -55,6 +99,30 @@ public struct MLXLLMProvider: LLMProvider, Sendable {
         maxTokens: Int,
         schema: String
     ) async throws -> LLMResponse {
-        throw stubError
+        let schemaInstruction = "Respond with JSON matching this schema: \(schema)"
+        let effectiveSystem = [systemPrompt, schemaInstruction].compactMap { $0 }.joined(separator: "\n\n")
+        for attempt in 1...3 {
+            let response = try await complete(prompt: prompt, systemPrompt: effectiveSystem, maxTokens: maxTokens)
+            if let data = response.text.data(using: .utf8),
+               (try? JSONSerialization.jsonObject(with: data)) != nil {
+                return response
+            }
+            if attempt == 3 {
+                throw PodedgeError.llmFailed(reason: "JSON parse failed after 3 retries")
+            }
+        }
+        throw PodedgeError.llmFailed(reason: "JSON parse failed after 3 retries")
+    }
+
+    private func requireLoadedOrLazyLoad() async throws -> ModelContainer {
+        if let container { return container }
+        guard let dir = modelsDirectory else {
+            throw PodedgeError.llmFailed(reason: "Model not loaded: \(modelID)")
+        }
+        try await loadModel(from: dir)
+        guard let container else {
+            throw PodedgeError.llmFailed(reason: "Model failed to load: \(modelID)")
+        }
+        return container
     }
 }

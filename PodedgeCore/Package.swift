@@ -10,6 +10,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/Blaizzy/mlx-audio-swift.git", from: "0.1.2"),
+        .package(url: "https://github.com/ml-explore/mlx-swift-examples", branch: "main"),
     ],
     targets: [
         .target(
@@ -17,6 +18,7 @@ let package = Package(
             dependencies: [
                 .product(name: "MLXAudioSTT", package: "mlx-audio-swift"),
                 .product(name: "MLXAudioCore", package: "mlx-audio-swift"),
+                .product(name: "LLM", package: "mlx-swift-examples"),
             ],
             path: "Sources/PodedgeCore",
             resources: [.process("Resources")]

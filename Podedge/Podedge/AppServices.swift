@@ -31,6 +31,7 @@ public final class AppServices {
     public let publishDryRun: PublishDryRun
     public let ingestService: IngestService
     public let transcriptionService: TranscriptionService
+    public private(set) var llmProvider: any LLMProvider
     public let llmService: LLMService
     public let metadataGenerationService: MetadataGenerationService
     let confirmationCoordinator: ConfirmationCoordinator
@@ -58,7 +59,8 @@ public final class AppServices {
 
         let pipeline: any AudioPipeline = DefaultAudioPipeline()
         self.audioPipeline = pipeline
-        let llmProvider: any LLMProvider = MLXLLMProvider()
+        let llmProvider: any LLMProvider = Self.resolveProvider()
+        self.llmProvider = llmProvider
         let analyticsProvider: any AnalyticsProvider = PlaceholderAnalyticsProvider()
 
         guard let appSupportDir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
@@ -125,6 +127,33 @@ public final class AppServices {
         self.confirmationCoordinator = ConfirmationCoordinator()
     }
 
+    // MARK: - Provider Resolution
+
+    private static func resolveProvider() -> any LLMProvider {
+        let activeID = UserDefaults.standard.string(forKey: "llm.provider.activeID")
+        let modelID = UserDefaults.standard.string(forKey: "llm.provider.modelID")
+        switch activeID {
+        case "mlx":
+            let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+            let modelsDir = appSupport
+                .appendingPathComponent("Podedge", isDirectory: true)
+                .appendingPathComponent("Models", isDirectory: true)
+                .appendingPathComponent("LLM", isDirectory: true)
+            let sanitized = (modelID ?? "mlx-community/Qwen3-8B-4bit-DWQ-053125").replacingOccurrences(of: "/", with: "_")
+            let modelDir = modelsDir.appendingPathComponent(sanitized, isDirectory: true)
+            return MLXLLMProvider(modelID: modelID ?? "mlx-community/Qwen3-8B-4bit-DWQ-053125", modelsDirectory: modelDir)
+        case "ollama":
+            return OllamaLLMProvider(modelID: modelID ?? "llama3.1:8b")
+        default:
+            return DisabledLLMProvider()
+        }
+    }
+
+    /// Replaces the active LLM provider. Called when user changes provider in Settings.
+    public func updateLLMProvider() {
+        llmProvider = Self.resolveProvider()
+    }
+
     // MARK: - Bootstrap
 
     /// Registers job handlers for all job kinds and starts the scheduler.
@@ -170,6 +199,18 @@ private struct PlaceholderAnalyticsProvider: AnalyticsProvider {
     func prefixURL(for enclosureURL: URL) -> URL { enclosureURL }
     func fetchSnapshot(externalShowID: String, window: DateInterval) async throws -> AnalyticsFetchResult {
         AnalyticsFetchResult(downloads: 0, uniqueListeners: 0)
+    }
+}
+
+private struct DisabledLLMProvider: LLMProvider {
+    func complete(prompt: String, systemPrompt: String?, maxTokens: Int) async throws -> LLMResponse {
+        throw PodedgeError.llmFailed(reason: "No AI provider configured. Complete onboarding or visit Settings → LLM Providers.")
+    }
+    func stream(prompt: String, systemPrompt: String?, maxTokens: Int) -> AsyncThrowingStream<LLMStreamChunk, Error> {
+        AsyncThrowingStream { $0.finish(throwing: PodedgeError.llmFailed(reason: "No AI provider configured.")) }
+    }
+    func complete(prompt: String, systemPrompt: String?, maxTokens: Int, schema: String) async throws -> LLMResponse {
+        throw PodedgeError.llmFailed(reason: "No AI provider configured. Complete onboarding or visit Settings → LLM Providers.")
     }
 }
 

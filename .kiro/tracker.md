@@ -9,10 +9,10 @@ Work streams WS1–WS8 produced a compilable app shell with fully unit-tested Po
 | Work Stream | What Was Built | Gap |
 |-------------|---------------|-----|
 | WS1–WS3 | Xcode project, PodedgeCore package, all 7 extension-point protocols, SwiftData models, LibraryStore, JobScheduler, KeychainService, Logger, ToolRegistry, ToolBroker, AuditLogService | No concrete AudioPipeline; no TranscriptionEngine; ToolRegistry empty at runtime |
-| WS4–WS6 | MP3Validator, AudioProber, WaveformGenerator, ID3TagService, IngestService, TranscriptionService (protocol only), MLXLLMProvider (stub), LLMService, MetadataGenerationService, S3Host, HostService, FeedBuilder, FeedXMLSerializer, FeedValidator, OP3AnalyticsProvider, AnalyticsService, DistributionService, all distribution targets | MLXLLMProvider throws on every call; no WhisperKitTranscriptionEngine; DefaultAudioPipeline not composed; no JobHandlers |
+| WS4–WS6 | MP3Validator, AudioProber, WaveformGenerator, ID3TagService, IngestService, TranscriptionService (protocol only), MLXLLMProvider (stub), LLMService, MetadataGenerationService, S3Host, HostService, FeedBuilder, FeedXMLSerializer, FeedValidator, OP3AnalyticsProvider, AnalyticsService, DistributionService, all distribution targets | MLXLLMProvider replaced with real actor (lazy-loads from disk); no WhisperKitTranscriptionEngine; DefaultAudioPipeline not composed; no JobHandlers |
 | WS7–WS8 | PublishService, PublishDryRun, PublishArtifactBuilder, SocialBlurbRenderer, all SwiftUI views (MainWindowView, EpisodeEditorView, SettingsView, OnboardingView, etc.), ConfirmationCoordinator, ToolButton, NotificationService, UpdateChecker | Publish button not wired; EpisodeListView.importAudio bypasses IngestService; no AppServices composition root; no Assistant |
 
-**Summary gap:** App shell compiles but no pipeline wiring; MLXLLMProvider stub; no TranscriptionEngine; no real AudioPipeline; empty ToolRegistry at runtime.
+**Summary gap:** App shell compiles but no pipeline wiring; MLXLLMProvider replaced with real actor (lazy-loads from disk); no TranscriptionEngine; no real AudioPipeline; empty ToolRegistry at runtime.
 
 ---
 
@@ -79,26 +79,26 @@ Work streams WS1–WS8 produced a compilable app shell with fully unit-tested Po
 
 [requirements.md](.kiro/specs/04-local-llm-mlx/requirements.md) · [design.md](.kiro/specs/04-local-llm-mlx/design.md)
 
-**Status:** ⬜ Not started  
+**Status:** ✅ Complete  
 **Dependencies:** Spec 01
 
 | ID | Task | File(s) | Status |
 |----|------|---------|--------|
-| 04.1 | Add `mlx-swift-examples` to `Package.swift` | `PodedgeCore/Package.swift` | ⬜ |
-| 04.2 | Replace stub `MLXLLMProvider` with real MLX inference using `mlx-swift-examples` and support for the 3 bundled MLX model IDs (Gemma 4 E4B, Qwen 3 8B DWQ, Mistral Small 24B) | `PodedgeCore/Sources/PodedgeCore/LLM/MLXLLMProvider.swift` | ⬜ |
-| 04.3 | Create `LLMModelInfo` struct | `PodedgeCore/Sources/PodedgeCore/Models/LLMModelInfo.swift` | ⬜ |
-| 04.4 | Add `availableLLMModels()` and `downloadLLMModel(named:onProgress:)` to `ModelManager` | `PodedgeCore/Sources/PodedgeCore/Services/ModelManager.swift` | ⬜ |
-| 04.5 | Wire active provider (MLX or Ollama based on user selection from UserDefaults) into `AppServices` | `Podedge/Podedge/AppServices.swift` | ⬜ |
+| 04.1 | Add `mlx-swift-examples` to `Package.swift` | `PodedgeCore/Package.swift` | ✅ |
+| 04.2 | Replace stub `MLXLLMProvider` with real MLX inference using `mlx-swift-examples` and support for the 3 bundled MLX model IDs (Gemma 4 E4B, Qwen 3 8B DWQ, Mistral Small 24B) | `PodedgeCore/Sources/PodedgeCore/LLM/MLXLLMProvider.swift` | ✅ |
+| 04.3 | Create `LLMModelInfo` struct | `PodedgeCore/Sources/PodedgeCore/Models/LLMModelInfo.swift` | ✅ |
+| 04.4 | Add `availableLLMModels()` and `downloadLLMModel(named:onProgress:)` to `ModelManager` | `PodedgeCore/Sources/PodedgeCore/Services/ModelManager.swift` | ✅ |
+| 04.5 | Wire active provider (MLX or Ollama based on user selection from UserDefaults) into `AppServices` | `Podedge/Podedge/AppServices.swift` | ✅ |
 | 04.6 | ~~Update `OnboardingView` to show LLM model in download list~~ — replaced by 04.13 | — | ~~⬜~~ |
-| 04.7 | Write `MLXLLMProviderTests` (token counts, schema-constrained output, not-loaded throws) | `PodedgeCoreTests/MLXLLMProviderTests.swift` | ⬜ |
-| 04.8 | Create `OllamaLLMProvider` | `PodedgeCore/Sources/PodedgeCore/LLM/OllamaLLMProvider.swift` | ⬜ |
-| 04.9 | Create `OllamaModelInfo` type | `PodedgeCore/Sources/PodedgeCore/Models/OllamaModelInfo.swift` | ⬜ |
-| 04.10 | Extend `ModelManager` with `availableOllamaModels(baseURL:)` | `PodedgeCore/Sources/PodedgeCore/Services/ModelManager.swift` | ⬜ |
-| 04.11 | Add `ollamaUnreachable` case to `PodedgeError` | `PodedgeCore/Sources/PodedgeCore/Models/PodedgeError.swift` | ⬜ |
-| 04.12 | Create `AIProviderPickerView` with 4 options + guidance strings | `Podedge/Podedge/Views/Onboarding/AIProviderPickerView.swift` | ⬜ |
-| 04.13 | Rewrite `OnboardingView` step 4 to use `AIProviderPickerView` | `Podedge/Podedge/Views/Onboarding/OnboardingView.swift` | ⬜ |
-| 04.14 | Add LLM Providers tab to `SettingsView` | `Podedge/Podedge/Views/Settings/SettingsView.swift` | ⬜ |
-| 04.15 | Write `OllamaLLMProviderTests` (URLProtocol stubs, `/api/tags`, `/api/chat`, tool-use) | `PodedgeCoreTests/OllamaLLMProviderTests.swift` | ⬜ |
+| 04.7 | Write `MLXLLMProviderTests` (token counts, schema-constrained output, not-loaded throws) | `PodedgeCoreTests/MLXLLMProviderTests.swift` | ✅ |
+| 04.8 | Create `OllamaLLMProvider` | `PodedgeCore/Sources/PodedgeCore/LLM/OllamaLLMProvider.swift` | ✅ |
+| 04.9 | Create `OllamaModelInfo` type | `PodedgeCore/Sources/PodedgeCore/Models/OllamaModelInfo.swift` | ✅ |
+| 04.10 | Extend `ModelManager` with `availableOllamaModels(baseURL:)` | `PodedgeCore/Sources/PodedgeCore/Services/ModelManager.swift` | ✅ |
+| 04.11 | Add `ollamaUnreachable` case to `PodedgeError` | `PodedgeCore/Sources/PodedgeCore/Models/PodedgeError.swift` | ✅ |
+| 04.12 | Create `AIProviderPickerView` with 4 options + guidance strings | `Podedge/Podedge/Views/Onboarding/AIProviderPickerView.swift` | ✅ |
+| 04.13 | Rewrite `OnboardingView` step 4 to use `AIProviderPickerView` | `Podedge/Podedge/Views/Onboarding/OnboardingView.swift` | ✅ |
+| 04.14 | Add LLM Providers tab to `SettingsView` | `Podedge/Podedge/Views/Settings/SettingsView.swift` | ✅ |
+| 04.15 | Write `OllamaLLMProviderTests` (URLProtocol stubs, `/api/tags`, `/api/chat`, tool-use) | `PodedgeCoreTests/OllamaLLMProviderTests.swift` | ✅ |
 
 
 ### Spec 05 — Metadata Generation
