@@ -18,23 +18,23 @@ public enum PodedgeError: LocalizedError, Sendable {
 
     public var errorDescription: String? {
         switch self {
-        case .invalidMP3(let reason): "Invalid MP3: \(reason)"
-        case .uploadFailed(let reason): "Upload failed: \(reason)"
-        case .feedValidation(let reason): "Feed validation: \(reason)"
-        case .keychainFailure(let reason): "Keychain error: \(reason)"
-        case .jobFailed(let id, let reason): "Job \(id) failed: \(reason)"
-        case .hostUnreachable(let reason): "Host unreachable: \(reason)"
+        case .invalidMP3(let reason): return "Invalid MP3: \(reason)"
+        case .uploadFailed(let reason): return "Upload failed: \(reason)"
+        case .feedValidation(let reason): return "Feed validation: \(reason)"
+        case .keychainFailure(let reason): return "Keychain error: \(reason)"
+        case .jobFailed(let id, let reason): return "Job \(id) failed: \(reason)"
+        case .hostUnreachable(let reason): return "Host unreachable: \(reason)"
         case .notFound(let entity, let id):
             if id.isEmpty {
                 return "\(entity) not found"
             }
             return "\(entity) not found: \(id)"
-        case .preconditionViolated(let reason): "Precondition violated: \(reason)"
-        case .transcriptionFailed(let reason): "Transcription failed: \(reason)"
-        case .llmFailed(let reason): "LLM failed: \(reason)"
-        case .distributionFailed(let target, let reason): "Distribution to \(target) failed: \(reason)"
-        case .analyticsUnavailable(let reason): "Analytics unavailable: \(reason)"
-        case .ollamaUnreachable(let reason): "Ollama unreachable: \(reason)"
+        case .preconditionViolated(let reason): return "Precondition violated: \(reason)"
+        case .transcriptionFailed(let reason): return "Transcription failed: \(reason)"
+        case .llmFailed(let reason): return "LLM failed: \(reason)"
+        case .distributionFailed(let target, let reason): return "Distribution to \(target) failed: \(reason)"
+        case .analyticsUnavailable(let reason): return "Analytics unavailable: \(reason)"
+        case .ollamaUnreachable(let reason): return "Ollama unreachable: \(reason)"
         }
     }
 }

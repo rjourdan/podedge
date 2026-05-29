@@ -1,6 +1,6 @@
 import Foundation
 import MLXLMCommon
-import LLM
+import MLXLLM
 
 /// On-device LLM inference via MLX.
 public actor MLXLLMProvider: LLMProvider {
@@ -15,8 +15,8 @@ public actor MLXLLMProvider: LLMProvider {
 
     /// Loads the model from a local directory.
     public func loadModel(from directory: URL) async throws {
-        let config = ModelConfiguration(id: modelID, directory: directory)
-        container = try await LLM.loadModelContainer(configuration: config)
+        let config = ModelConfiguration(directory: directory)
+        container = try await loadModelContainer(configuration: config)
     }
 
     public func complete(
@@ -25,36 +25,33 @@ public actor MLXLLMProvider: LLMProvider {
         maxTokens: Int
     ) async throws -> LLMResponse {
         let container = try await requireLoadedOrLazyLoad()
-        let messages: [[String: String]]
-        if let systemPrompt {
-            messages = [["role": "system", "content": systemPrompt], ["role": "user", "content": prompt]]
-        } else {
-            messages = [["role": "user", "content": prompt]]
-        }
-        let input = try await container.perform { context, model in
-            try await context.processor.prepare(input: .init(messages: messages))
-        }
+        let userInput = makeUserInput(prompt: prompt, systemPrompt: systemPrompt)
+        let input = try await container.prepare(input: userInput)
         let params = GenerateParameters(maxTokens: maxTokens)
+        let stream = try await container.generate(input: input, parameters: params)
         var output = ""
-        var outputTokens = 0
-        let result = try await container.perform { context, model in
-            try MLXLMCommon.generate(input: input, parameters: params, context: context) { tokens in
-                outputTokens = tokens.count
-                if let text = context.tokenizer.decode(tokens: tokens) {
-                    output = text
-                }
-                return tokens.count >= maxTokens ? .stop : .more
+        var info: GenerateCompletionInfo?
+        for await generation in stream {
+            switch generation {
+            case .chunk(let text):
+                output += text
+            case .info(let completionInfo):
+                info = completionInfo
+            case .toolCall:
+                break
             }
         }
+        let outputTokens = info?.generationTokenCount ?? 0
+        let inputTokens = info?.promptTokenCount ?? 0
         return LLMResponse(
             text: output,
-            inputTokens: result.promptTokenCount,
+            inputTokens: inputTokens,
             outputTokens: outputTokens,
             finishReason: outputTokens >= maxTokens ? .length : .stop
         )
     }
 
-    public func stream(
+    nonisolated public func stream(
         prompt: String,
         systemPrompt: String?,
         maxTokens: Int
@@ -63,25 +60,22 @@ public actor MLXLLMProvider: LLMProvider {
             let task = Task {
                 do {
                     let container = try await self.requireLoadedOrLazyLoad()
-                    let messages: [[String: String]]
-                    if let systemPrompt {
-                        messages = [["role": "system", "content": systemPrompt], ["role": "user", "content": prompt]]
-                    } else {
-                        messages = [["role": "user", "content": prompt]]
-                    }
-                    let input = try await container.perform { context, model in
-                        try await context.processor.prepare(input: .init(messages: messages))
-                    }
+                    let userInput = self.makeUserInput(prompt: prompt, systemPrompt: systemPrompt)
+                    let input = try await container.prepare(input: userInput)
                     let params = GenerateParameters(maxTokens: maxTokens)
-                    _ = try await container.perform { context, model in
-                        try MLXLMCommon.generate(input: input, parameters: params, context: context) { tokens in
-                            if Task.isCancelled { return .stop }
-                            if let text = context.tokenizer.decode(tokens: tokens) {
-                                let isComplete = tokens.count >= maxTokens
-                                continuation.yield(LLMStreamChunk(text: text, isComplete: isComplete))
-                                if isComplete { return .stop }
-                            }
-                            return .more
+                    let generationStream = try await container.generate(input: input, parameters: params)
+                    var totalText = ""
+                    for await generation in generationStream {
+                        if Task.isCancelled { break }
+                        switch generation {
+                        case .chunk(let text):
+                            totalText += text
+                            let isComplete = false
+                            continuation.yield(LLMStreamChunk(text: totalText, isComplete: isComplete))
+                        case .info:
+                            continuation.yield(LLMStreamChunk(text: totalText, isComplete: true))
+                        case .toolCall:
+                            break
                         }
                     }
                     continuation.finish()
@@ -124,5 +118,15 @@ public actor MLXLLMProvider: LLMProvider {
             throw PodedgeError.llmFailed(reason: "Model failed to load: \(modelID)")
         }
         return container
+    }
+
+    private nonisolated func makeUserInput(prompt: String, systemPrompt: String?) -> UserInput {
+        let messages: [Message]
+        if let systemPrompt {
+            messages = [["role": "system", "content": systemPrompt], ["role": "user", "content": prompt]]
+        } else {
+            messages = [["role": "user", "content": prompt]]
+        }
+        return UserInput(messages: messages)
     }
 }

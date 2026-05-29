@@ -205,7 +205,7 @@ public actor ModelManager {
         let destDir = llmModelsDirectory.appendingPathComponent(sanitized, isDirectory: true)
         try FileManager.default.createDirectory(at: destDir, withIntermediateDirectories: true)
         // Use MLXLMCommon's ModelConfiguration to trigger download
-        let config = ModelConfiguration(id: modelID, directory: destDir)
+        let _config = ModelConfiguration(id: modelID)
         // The actual download is handled by the MLX framework when loading
         // For now we mark progress as indeterminate then complete
         onProgress?(0.0)

@@ -1,4 +1,5 @@
 import Foundation
+import PodedgeCore
 import UserNotifications
 
 /// Manages local notifications for publish success/failure and long-running jobs.
@@ -48,5 +49,17 @@ final class NotificationService {
     private func post(_ content: UNNotificationContent, identifier: String) {
         let request = UNNotificationRequest(identifier: identifier, content: content, trigger: nil)
         UNUserNotificationCenter.current().add(request)
+    }
+}
+
+// MARK: - NotificationServiceProtocol
+
+extension NotificationService: NotificationServiceProtocol {
+    func sendPublishSuccess(episodeTitle: String) async {
+        notifyPublishSuccess(episodeTitle: episodeTitle)
+    }
+
+    func sendPublishFailure(episodeTitle: String, reason: String) async {
+        notifyPublishFailure(episodeTitle: episodeTitle, reason: reason)
     }
 }

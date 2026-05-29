@@ -86,4 +86,16 @@ import SwiftData
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }
+
+    // MARK: - Validation
+
+    /// Validates that a scheduled publish date is in the future.
+    ///
+    /// - Parameter date: The proposed `scheduledFor` date.
+    /// - Throws: ``PodedgeError/preconditionViolated(reason:)`` if `date` is not in the future.
+    public static func validateScheduledFor(_ date: Date) throws {
+        guard date > Date() else {
+            throw PodedgeError.preconditionViolated(reason: "scheduledFor must be in the future")
+        }
+    }
 }

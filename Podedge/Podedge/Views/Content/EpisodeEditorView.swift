@@ -478,12 +478,22 @@ private struct TranscriptTab: View {
 // MARK: - Publish Tab
 
 private struct PublishTab: View {
-    let episode: Episode
+    @Bindable var episode: Episode
 
-    @Environment(ConfirmationCoordinator.self) private var coordinator
     @Environment(\.appServices) private var appServices
-    @State private var isPublishing = false
+    @Environment(\.modelContext) private var modelContext
+
     @State private var publishError: String?
+    @State private var showingDryRun = false
+    @State private var publishPlan: PublishPlan?
+    @State private var dryRunError: String?
+    @State private var scheduleError: String?
+    @State private var showingPublishConfirmation = false
+    @State private var showingUnpublishConfirmation = false
+
+    private var canPublish: Bool {
+        episode.status == .ready || episode.status == .scheduled
+    }
 
     var body: some View {
         ScrollView {
@@ -499,24 +509,48 @@ private struct PublishTab: View {
                         .font(.caption)
                 }
 
+                // Task 10.4 — Schedule DatePicker
+                if episode.status == .ready {
+                    schedulingSection
+                }
+
+                if let scheduleError {
+                    Text(scheduleError)
+                        .foregroundStyle(.red)
+                        .font(.caption)
+                }
+
                 HStack(spacing: 12) {
+                    // Task 10.2 — Dry Run
                     Button {
-                        // Dry run via PublishDryRun
+                        Task { await performDryRun() }
                     } label: {
-                        Label("Dry Run", systemImage: "eye")
+                        Label("Preview Publish", systemImage: "eye")
                     }
+                    .disabled(!canPublish)
                     .accessibilityLabel("Preview publish without uploading")
 
+                    // Task 10.1 — Publish
                     Button {
-                        Task { await publishEpisode() }
+                        publishWithConfirmation()
                     } label: {
                         Label("Publish Now", systemImage: "arrow.up.circle.fill")
                     }
-                    .disabled(episode.status != .ready && episode.status != .scheduled || isPublishing)
+                    .disabled(!canPublish || episode.status == .processing)
                     .accessibilityLabel("Publish episode")
+
+                    // Task 10.3 — Unpublish
+                    if episode.status == .published {
+                        Button(role: .destructive) {
+                            unpublishWithConfirmation()
+                        } label: {
+                            Label("Unpublish", systemImage: "arrow.down.circle")
+                        }
+                        .accessibilityLabel("Unpublish episode")
+                    }
                 }
 
-                if isPublishing {
+                if episode.status == .processing {
                     ProgressView("Publishing…")
                 }
 
@@ -526,7 +560,32 @@ private struct PublishTab: View {
             }
             .padding(16)
         }
+        .sheet(isPresented: $showingDryRun) {
+            dryRunSheet
+        }
+        .confirmationDialog(
+            "Publish this episode?",
+            isPresented: $showingPublishConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Publish") { performPublish() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This will upload audio and update your RSS feed.")
+        }
+        .confirmationDialog(
+            "Unpublish this episode?",
+            isPresented: $showingUnpublishConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Unpublish", role: .destructive) { performUnpublish() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("It will be removed from your RSS feed.")
+        }
     }
+
+    // MARK: - Status
 
     private var statusSection: some View {
         HStack(spacing: 8) {
@@ -539,18 +598,159 @@ private struct PublishTab: View {
         }
     }
 
-    private func publishEpisode() async {
-        isPublishing = true
-        defer { isPublishing = false }
-        publishError = nil
+    // MARK: - Scheduling (Task 10.4)
 
+    private var schedulingSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Schedule Publication")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            DatePicker(
+                "Publish at",
+                selection: Binding(
+                    get: { episode.scheduledFor ?? Date().addingTimeInterval(3600) },
+                    set: { newDate in
+                        do {
+                            try Episode.validateScheduledFor(newDate)
+                            scheduleError = nil
+                            episode.scheduledFor = newDate
+                            episode.status = .scheduled
+                            appServices?.bgTaskCoordinator.schedulePublish(for: episode)
+                            try? modelContext.save()
+                        } catch {
+                            scheduleError = error.localizedDescription
+                        }
+                    }
+                ),
+                in: Date()...,
+                displayedComponents: [.date, .hourAndMinute]
+            )
+        }
+    }
+
+    // MARK: - Publish (Task 10.1)
+
+    private func publishWithConfirmation() {
+        showingPublishConfirmation = true
+    }
+
+    private func performPublish() {
         guard let services = appServices else { return }
-        coordinator.requestConfirmation(
-            toolName: "publish_episode",
-            input: Data(),
-            broker: services.toolBroker,
-            caller: AppCaller()
-        )
+        episode.status = .processing
+        let job = Job(kind: .publish, targetID: episode.id)
+        do {
+            try services.jobScheduler.enqueue(job)
+            try modelContext.save()
+        } catch {
+            publishError = error.localizedDescription
+        }
+    }
+
+    // MARK: - Dry Run (Task 10.2)
+
+    private func performDryRun() async {
+        guard let services = appServices, let show = episode.show else {
+            dryRunError = "Missing show or services."
+            showingDryRun = true
+            return
+        }
+        dryRunError = nil
+        do {
+            publishPlan = try await services.publishDryRun.plan(show: show, episode: episode)
+        } catch {
+            dryRunError = error.localizedDescription
+            publishPlan = nil
+        }
+        showingDryRun = true
+    }
+
+    @ViewBuilder
+    private var dryRunSheet: some View {
+        NavigationStack {
+            Group {
+                if let dryRunError {
+                    ContentUnavailableView {
+                        Label("Dry Run Failed", systemImage: "exclamationmark.triangle")
+                    } description: {
+                        Text(dryRunError)
+                    }
+                } else if let plan = publishPlan {
+                    List {
+                        Section("Files to Upload") {
+                            ForEach(Array(plan.uploads.enumerated()), id: \.offset) { _, upload in
+                                HStack {
+                                    VStack(alignment: .leading) {
+                                        Text(upload.remotePath)
+                                            .font(.caption.monospaced())
+                                        Text(upload.contentType)
+                                            .font(.caption2)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    Spacer()
+                                    Text(ByteCountFormatter.string(fromByteCount: upload.byteSize, countStyle: .file))
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                    if upload.alreadyUploaded {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundStyle(.green)
+                                            .help("Already uploaded")
+                                    }
+                                }
+                            }
+                        }
+
+                        if !plan.feedValidationIssues.isEmpty {
+                            Section("Feed Validation Issues") {
+                                ForEach(plan.feedValidationIssues, id: \.self) { issue in
+                                    Label(issue, systemImage: "exclamationmark.triangle.fill")
+                                        .foregroundStyle(.orange)
+                                }
+                            }
+                        } else {
+                            Section("Feed") {
+                                Label("Feed is valid", systemImage: "checkmark.circle")
+                                    .foregroundStyle(.green)
+                            }
+                        }
+
+                        Section("Distribution Targets") {
+                            if plan.distributionTargets.isEmpty {
+                                Text("No distribution targets configured.")
+                                    .foregroundStyle(.secondary)
+                            } else {
+                                ForEach(plan.distributionTargets, id: \.self) { target in
+                                    Text(target)
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    ProgressView()
+                }
+            }
+            .navigationTitle("Publish Preview")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") { showingDryRun = false }
+                }
+            }
+        }
+        .frame(minWidth: 400, minHeight: 300)
+    }
+
+    // MARK: - Unpublish (Task 10.3)
+
+    private func unpublishWithConfirmation() {
+        showingUnpublishConfirmation = true
+    }
+
+    private func performUnpublish() {
+        episode.status = .draft
+        episode.pubDate = nil
+        // TODO: Call publishService.regenerateFeed(for:excluding:) when available.
+        // Feed regeneration will be handled when the next episode is published.
+        try? modelContext.save()
     }
 }
 

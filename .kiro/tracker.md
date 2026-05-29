@@ -1,6 +1,6 @@
 # Podedge v1 Implementation Tracker — Spec-organized
 
-Last updated: 2026-05-13
+Last updated: 2026-05-28
 
 ## Pre-v1 (Historic)
 
@@ -125,20 +125,20 @@ Work streams WS1–WS8 produced a compilable app shell with fully unit-tested Po
 
 [requirements.md](.kiro/specs/06-publish-pipeline/requirements.md) · [design.md](.kiro/specs/06-publish-pipeline/design.md)
 
-**Status:** ⬜ Not started  
+**Status:** ✅ Complete  
 **Dependencies:** Spec 01, Spec 02
 
 | ID | Task | File(s) | Status |
 |----|------|---------|--------|
-| 06.1 | Create `PublishJobHandler` | `PodedgeCore/Sources/PodedgeCore/Services/PublishJobHandler.swift` | ⬜ |
-| 06.2 | Create `UploadJobHandler` | `PodedgeCore/Sources/PodedgeCore/Services/UploadJobHandler.swift` | ⬜ |
-| 06.3 | Create `OP3PollJobHandler` | `PodedgeCore/Sources/PodedgeCore/Services/OP3PollJobHandler.swift` | ⬜ |
-| 06.4 | Create `NotificationServiceProtocol` | `PodedgeCore/Sources/PodedgeCore/Services/NotificationServiceProtocol.swift` | ⬜ |
-| 06.5 | Create `BGTaskCoordinator` and register `dev.podedge.scheduled-publish` | `Podedge/Podedge/Services/BGTaskCoordinator.swift` | ⬜ |
-| 06.6 | Add `BGTaskSchedulerPermittedIdentifiers` to `Info.plist` | `Podedge/Podedge/Info.plist` | ⬜ |
-| 06.7 | Register all three job handlers in `AppServices.bootstrap()` | `Podedge/Podedge/AppServices.swift` | ⬜ |
-| 06.8 | Wire Publish tab: Preview Publish sheet, ToolButton for publish/unpublish, scheduledFor DatePicker | `Podedge/Podedge/Views/Content/EpisodeEditorView.swift` | ⬜ |
-| 06.9 | Write `PublishJobHandlerTests` and `OP3PollJobHandlerTests` | `PodedgeCoreTests/PublishJobHandlerTests.swift`, `OP3PollJobHandlerTests.swift` | ⬜ |
+| 06.1 | Create `PublishJobHandler` | `PodedgeCore/Sources/PodedgeCore/Services/PublishJobHandler.swift` | ✅ |
+| 06.2 | Create `UploadJobHandler` | `PodedgeCore/Sources/PodedgeCore/Services/UploadJobHandler.swift` | ✅ |
+| 06.3 | Create `OP3PollJobHandler` | `PodedgeCore/Sources/PodedgeCore/Services/OP3PollJobHandler.swift` | ✅ |
+| 06.4 | Create `NotificationServiceProtocol` | `PodedgeCore/Sources/PodedgeCore/Services/NotificationServiceProtocol.swift` | ✅ |
+| 06.5 | Create `BGTaskCoordinator` and register `dev.podedge.scheduled-publish` | `Podedge/Podedge/Services/BGTaskCoordinator.swift` | ✅ (Timer-based; BGTaskScheduler unavailable on macOS) |
+| 06.6 | Add `BGTaskSchedulerPermittedIdentifiers` to `Info.plist` | `Podedge/Podedge/Info.plist` | ✅ (Skipped — not needed on macOS) |
+| 06.7 | Register all three job handlers in `AppServices.bootstrap()` | `Podedge/Podedge/AppServices.swift` | ✅ |
+| 06.8 | Wire Publish tab: Preview Publish sheet, ToolButton for publish/unpublish, scheduledFor DatePicker | `Podedge/Podedge/Views/Content/EpisodeEditorView.swift` | ✅ |
+| 06.9 | Write `PublishJobHandlerTests` and `OP3PollJobHandlerTests` | `PodedgeCoreTests/PublishJobHandlerTests.swift`, `OP3PollJobHandlerTests.swift` | ✅ |
 
 ---
 

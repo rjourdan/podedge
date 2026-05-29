@@ -6,7 +6,7 @@ import Testing
 // MARK: - Mock LLM Provider
 
 /// A controllable mock ``LLMProvider`` that returns scripted JSON responses.
-struct MockLLMProvider: LLMProvider, Sendable {
+private struct MockLLMProvider: LLMProvider, Sendable {
 
     /// Map from prompt substring → response text. The first matching key is used.
     var responses: [String: String] = [:]

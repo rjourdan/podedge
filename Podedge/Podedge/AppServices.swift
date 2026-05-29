@@ -34,6 +34,7 @@ public final class AppServices {
     public private(set) var llmProvider: any LLMProvider
     public let llmService: LLMService
     public let metadataGenerationService: MetadataGenerationService
+    public let bgTaskCoordinator: BGTaskCoordinator
     let confirmationCoordinator: ConfirmationCoordinator
 
     // MARK: - State
@@ -125,6 +126,11 @@ public final class AppServices {
         self.metadataGenerationService = MetadataGenerationService(llmService: llm)
 
         self.confirmationCoordinator = ConfirmationCoordinator()
+
+        self.bgTaskCoordinator = BGTaskCoordinator(
+            jobScheduler: scheduler,
+            libraryStore: store
+        )
     }
 
     // MARK: - Provider Resolution
@@ -165,11 +171,16 @@ public final class AppServices {
         // Register real handlers
         jobScheduler.registerHandler(TranscribeJobHandler(transcriptionService: transcriptionService))
         jobScheduler.registerHandler(GenerateMetadataJobHandler(metadataService: metadataGenerationService))
+        jobScheduler.registerHandler(PublishJobHandler(publishService: publishService, notificationService: NotificationService.shared))
+        jobScheduler.registerHandler(UploadJobHandler(hostService: hostService))
+        jobScheduler.registerHandler(OP3PollJobHandler(analyticsService: analyticsService))
 
         // Placeholder handlers for unimplemented job kinds
-        for kind in JobKind.allCases where kind != .transcribe && kind != .generateMetadata {
+        for kind in JobKind.allCases where kind != .transcribe && kind != .generateMetadata && kind != .publish && kind != .upload && kind != .op3Poll {
             jobScheduler.registerHandler(PlaceholderJobHandler(handledKind: kind))
         }
+
+        bgTaskCoordinator.registerTasks()
         jobScheduler.start()
     }
 
