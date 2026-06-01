@@ -114,4 +114,30 @@ public actor KeychainService {
         guard let data = try load(forKey: key) else { return nil }
         return try JSONDecoder().decode(HostCredential.self, from: data)
     }
+
+    // MARK: - Social Credentials
+
+    /// Stores a Bluesky app password.
+    public func setBlueskyAppPassword(_ password: String, handle: String) throws {
+        guard let data = password.data(using: .utf8) else { return }
+        try store(data: data, forKey: "bluesky.\(handle)")
+    }
+
+    /// Loads a Bluesky app password.
+    public func blueskyAppPassword(handle: String) throws -> String? {
+        guard let data = try load(forKey: "bluesky.\(handle)") else { return nil }
+        return String(data: data, encoding: .utf8)
+    }
+
+    /// Stores a Mastodon access token.
+    public func setMastodonAccessToken(_ token: String, serverHost: String) throws {
+        guard let data = token.data(using: .utf8) else { return }
+        try store(data: data, forKey: "mastodon.\(serverHost)")
+    }
+
+    /// Loads a Mastodon access token.
+    public func mastodonAccessToken(serverHost: String) throws -> String? {
+        guard let data = try load(forKey: "mastodon.\(serverHost)") else { return nil }
+        return String(data: data, encoding: .utf8)
+    }
 }

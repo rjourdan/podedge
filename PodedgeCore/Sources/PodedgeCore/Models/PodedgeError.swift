@@ -15,6 +15,7 @@ public enum PodedgeError: LocalizedError, Sendable {
     case distributionFailed(target: String, reason: String)
     case analyticsUnavailable(reason: String)
     case ollamaUnreachable(reason: String)
+    case socialPostFailed(platform: String, reason: String)
 
     public var errorDescription: String? {
         switch self {
@@ -35,6 +36,7 @@ public enum PodedgeError: LocalizedError, Sendable {
         case .distributionFailed(let target, let reason): return "Distribution to \(target) failed: \(reason)"
         case .analyticsUnavailable(let reason): return "Analytics unavailable: \(reason)"
         case .ollamaUnreachable(let reason): return "Ollama unreachable: \(reason)"
+        case .socialPostFailed(let platform, let reason): return "Social post to \(platform) failed: \(reason)"
         }
     }
 }

@@ -1,6 +1,6 @@
 # Podedge v1 Implementation Tracker — Spec-organized
 
-Last updated: 2026-05-28
+Last updated: 2026-05-29
 
 ## Pre-v1 (Historic)
 
@@ -146,21 +146,21 @@ Work streams WS1–WS8 produced a compilable app shell with fully unit-tested Po
 
 [requirements.md](.kiro/specs/07-social-posting/requirements.md) · [design.md](.kiro/specs/07-social-posting/design.md)
 
-**Status:** ⬜ Not started  
+**Status:** ✅ Complete  
 **Dependencies:** Spec 05, Spec 06
 
 | ID | Task | File(s) | Status |
 |----|------|---------|--------|
-| 07.1 | Create `SocialPostingTarget` protocol and supporting types | `PodedgeCore/Sources/PodedgeCore/Services/SocialPostingTarget.swift` | ⬜ |
-| 07.2 | Create `BlueskyTarget` (AT Protocol) | `PodedgeCore/Sources/PodedgeCore/Social/BlueskyTarget.swift` | ⬜ |
-| 07.3 | Create `MastodonTarget` (/api/v1/statuses) | `PodedgeCore/Sources/PodedgeCore/Social/MastodonTarget.swift` | ⬜ |
-| 07.4 | Create `CopyPasteTarget` for X, LinkedIn, Threads | `PodedgeCore/Sources/PodedgeCore/Social/CopyPasteTarget.swift` | ⬜ |
-| 07.5 | Create `SocialPostingService` actor | `PodedgeCore/Sources/PodedgeCore/Services/SocialPostingService.swift` | ⬜ |
-| 07.6 | Add `socialPostFailed` to `PodedgeError` | `PodedgeCore/Sources/PodedgeCore/Models/PodedgeError.swift` | ⬜ |
-| 07.7 | Add Bluesky and Mastodon Keychain accessors | `PodedgeCore/Sources/PodedgeCore/Services/KeychainService.swift` | ⬜ |
-| 07.8 | Wire `PromotionTabView` Post/Copy buttons | `Podedge/Podedge/Views/Components/PromotionTabView.swift` | ⬜ |
-| 07.9 | Add Social accounts tab to `SettingsView` | `Podedge/Podedge/Views/Settings/SettingsView.swift` | ⬜ |
-| 07.10 | Write `BlueskyTargetTests` and `MastodonTargetTests` (URLProtocol stubs) | `PodedgeCoreTests/BlueskyTargetTests.swift`, `MastodonTargetTests.swift` | ⬜ |
+| 07.1 | Create `SocialPostingTarget` protocol and supporting types | `PodedgeCore/Sources/PodedgeCore/Services/SocialPostingTarget.swift` | ✅ |
+| 07.2 | Create `BlueskyTarget` (AT Protocol) | `PodedgeCore/Sources/PodedgeCore/Social/BlueskyTarget.swift` | ✅ |
+| 07.3 | Create `MastodonTarget` (/api/v1/statuses) | `PodedgeCore/Sources/PodedgeCore/Social/MastodonTarget.swift` | ✅ |
+| 07.4 | Create `CopyPasteTarget` for X, LinkedIn, Threads | `PodedgeCore/Sources/PodedgeCore/Social/CopyPasteTarget.swift` | ✅ |
+| 07.5 | Create `SocialPostingService` actor | `PodedgeCore/Sources/PodedgeCore/Services/SocialPostingService.swift` | ✅ |
+| 07.6 | Add `socialPostFailed` to `PodedgeError` | `PodedgeCore/Sources/PodedgeCore/Models/PodedgeError.swift` | ✅ |
+| 07.7 | Add Bluesky and Mastodon Keychain accessors | `PodedgeCore/Sources/PodedgeCore/Services/KeychainService.swift` | ✅ |
+| 07.8 | Wire `PromotionTabView` Post/Copy buttons | `Podedge/Podedge/Views/Components/PromotionTabView.swift` | ✅ |
+| 07.9 | Add Social accounts tab to `SettingsView` | `Podedge/Podedge/Views/Settings/SettingsView.swift` | ✅ |
+| 07.10 | Write `BlueskyTargetTests` and `MastodonTargetTests` (URLProtocol stubs) | `PodedgeCoreTests/BlueskyTargetTests.swift`, `MastodonTargetTests.swift` | ✅ |
 
 ---
 

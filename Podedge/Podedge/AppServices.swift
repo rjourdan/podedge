@@ -35,6 +35,7 @@ public final class AppServices {
     public let llmService: LLMService
     public let metadataGenerationService: MetadataGenerationService
     public let bgTaskCoordinator: BGTaskCoordinator
+    public let socialPostingService: SocialPostingService
     let confirmationCoordinator: ConfirmationCoordinator
 
     // MARK: - State
@@ -126,6 +127,7 @@ public final class AppServices {
         self.metadataGenerationService = MetadataGenerationService(llmService: llm)
 
         self.confirmationCoordinator = ConfirmationCoordinator()
+        self.socialPostingService = SocialPostingService()
 
         self.bgTaskCoordinator = BGTaskCoordinator(
             jobScheduler: scheduler,
@@ -179,6 +181,11 @@ public final class AppServices {
         for kind in JobKind.allCases where kind != .transcribe && kind != .generateMetadata && kind != .publish && kind != .upload && kind != .op3Poll {
             jobScheduler.registerHandler(PlaceholderJobHandler(handledKind: kind))
         }
+
+        // Register copy-paste social targets (always available)
+        await socialPostingService.register(CopyPasteTarget(platformID: "x", displayName: "X (Twitter)"))
+        await socialPostingService.register(CopyPasteTarget(platformID: "linkedin", displayName: "LinkedIn"))
+        await socialPostingService.register(CopyPasteTarget(platformID: "threads", displayName: "Threads"))
 
         bgTaskCoordinator.registerTasks()
         jobScheduler.start()

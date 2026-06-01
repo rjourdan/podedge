@@ -18,6 +18,8 @@ struct SettingsView: View {
                 .tabItem { Label("LLM Providers", systemImage: "brain") }
             DistributionSettingsTab()
                 .tabItem { Label("Distribution", systemImage: "globe") }
+            SocialSettingsTab()
+                .tabItem { Label("Social", systemImage: "bubble.left.and.bubble.right") }
             AboutSettingsTab()
                 .tabItem { Label("About", systemImage: "info.circle") }
         }
@@ -477,5 +479,132 @@ private struct AboutSettingsTab: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding()
+    }
+}
+
+// MARK: - Social
+
+private struct SocialSettingsTab: View {
+    @Environment(\.appServices) private var appServices
+
+    @State private var blueskyHandle = ""
+    @State private var blueskyAppPassword = ""
+    @State private var blueskyConnected = false
+    @State private var blueskyError: String?
+    @State private var blueskyTesting = false
+
+    @State private var mastodonServer = ""
+    @State private var mastodonToken = ""
+    @State private var mastodonConnected = false
+    @State private var mastodonError: String?
+    @State private var mastodonTesting = false
+
+    var body: some View {
+        Form {
+            Section("Bluesky") {
+                TextField("Handle (e.g. user.bsky.social)", text: $blueskyHandle)
+                SecureField("App Password", text: $blueskyAppPassword)
+                HStack {
+                    Button("Connect") { connectBluesky() }
+                        .disabled(blueskyHandle.isEmpty || blueskyAppPassword.isEmpty || blueskyTesting)
+                    if blueskyTesting { ProgressView().controlSize(.small) }
+                    if blueskyConnected { Label("Connected", systemImage: "checkmark.circle.fill").foregroundStyle(.green) }
+                }
+                if let error = blueskyError {
+                    Text(error).font(.caption).foregroundStyle(.red)
+                }
+            }
+            Section("Mastodon") {
+                TextField("Server URL (e.g. https://mastodon.social)", text: $mastodonServer)
+                SecureField("Access Token", text: $mastodonToken)
+                HStack {
+                    Button("Connect") { connectMastodon() }
+                        .disabled(mastodonServer.isEmpty || mastodonToken.isEmpty || mastodonTesting)
+                    if mastodonTesting { ProgressView().controlSize(.small) }
+                    if mastodonConnected { Label("Connected", systemImage: "checkmark.circle.fill").foregroundStyle(.green) }
+                }
+                if let error = mastodonError {
+                    Text(error).font(.caption).foregroundStyle(.red)
+                }
+            }
+            Section {
+                Text("X, LinkedIn, and Threads use copy-to-clipboard. No account connection needed.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding()
+        .onAppear { checkExistingCredentials() }
+    }
+
+    private func connectBluesky() {
+        blueskyTesting = true
+        blueskyError = nil
+        Task {
+            guard let services = appServices else { return }
+            do {
+                let url = URL(string: "https://bsky.social/xrpc/com.atproto.server.createSession")!
+                var request = URLRequest(url: url)
+                request.httpMethod = "POST"
+                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                let body = ["identifier": blueskyHandle, "password": blueskyAppPassword]
+                request.httpBody = try JSONSerialization.data(withJSONObject: body)
+                let (_, response) = try await URLSession.shared.data(for: request)
+                guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+                    blueskyError = "Invalid credentials"
+                    blueskyTesting = false
+                    return
+                }
+                try await services.keychainService.setBlueskyAppPassword(blueskyAppPassword, handle: blueskyHandle)
+                let target = BlueskyTarget(handle: blueskyHandle, keychainService: services.keychainService, keychainRef: "bluesky.\(blueskyHandle)")
+                await services.socialPostingService.register(target)
+                blueskyConnected = true
+                blueskyTesting = false
+            } catch {
+                blueskyError = error.localizedDescription
+                blueskyTesting = false
+            }
+        }
+    }
+
+    private func connectMastodon() {
+        mastodonTesting = true
+        mastodonError = nil
+        Task {
+            guard let services = appServices else { return }
+            do {
+                guard let serverURL = URL(string: mastodonServer) else {
+                    mastodonError = "Invalid server URL"
+                    mastodonTesting = false
+                    return
+                }
+                let verifyURL = serverURL.appendingPathComponent("api/v1/accounts/verify_credentials")
+                var request = URLRequest(url: verifyURL)
+                request.setValue("Bearer \(mastodonToken)", forHTTPHeaderField: "Authorization")
+                let (_, response) = try await URLSession.shared.data(for: request)
+                guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+                    mastodonError = "Invalid token or server"
+                    mastodonTesting = false
+                    return
+                }
+                let host = serverURL.host ?? mastodonServer
+                try await services.keychainService.setMastodonAccessToken(mastodonToken, serverHost: host)
+                let target = MastodonTarget(serverURL: serverURL, keychainService: services.keychainService, keychainRef: "mastodon.\(host)")
+                await services.socialPostingService.register(target)
+                mastodonConnected = true
+                mastodonTesting = false
+            } catch {
+                mastodonError = error.localizedDescription
+                mastodonTesting = false
+            }
+        }
+    }
+
+    private func checkExistingCredentials() {
+        Task {
+            guard appServices != nil else { return }
+            // Credentials are checked when user explicitly connects.
+            // Future: persist handle/server in UserDefaults to auto-detect.
+        }
     }
 }
