@@ -9,6 +9,7 @@ struct ShowListView: View {
 
     @Query(sort: \Show.title) private var shows: [Show]
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.appServices) private var appServices
 
     @State private var showingNewShowSheet = false
     @State private var showingDeleteConfirmation = false
@@ -49,9 +50,17 @@ struct ShowListView: View {
         }
         .alert("Delete Show?", isPresented: $showingDeleteConfirmation) {
             Button("Delete", role: .destructive) {
-                if let offsets = pendingDeleteOffsets {
+                if let offsets = pendingDeleteOffsets, let services = appServices {
                     for index in offsets {
-                        modelContext.delete(shows[index])
+                        let showID = shows[index].id
+                        let input = (try? JSONEncoder().encode(["showID": showID.uuidString])) ?? Data()
+                        Task {
+                            _ = await services.toolBroker.invokeConfirmed(
+                                toolNamed: "show.delete",
+                                input: input,
+                                caller: AppCaller()
+                            )
+                        }
                     }
                 }
                 pendingDeleteOffsets = nil

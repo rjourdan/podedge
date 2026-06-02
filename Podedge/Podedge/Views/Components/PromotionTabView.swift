@@ -13,7 +13,6 @@ struct PromotionTabView: View {
     @State private var generatedText = ""
     @State private var isGenerating = false
     @State private var isPosting = false
-    @State private var showingPostConfirmation = false
     @State private var statusMessage: String?
     @State private var errorMessage: String?
 
@@ -99,13 +98,17 @@ struct PromotionTabView: View {
 
                 if let platform = currentPlatform {
                     if platform.3 == .api {
-                        Button {
-                            showingPostConfirmation = true
-                        } label: {
-                            Label("Post", systemImage: "paperplane")
+                        if let services = appServices {
+                            ToolButton(
+                                title: "Post",
+                                toolName: "social.post",
+                                input: { encodeSocialPost(platformID: platform.0) },
+                                broker: services.toolBroker,
+                                caller: AppCaller(),
+                                systemImage: "paperplane"
+                            )
+                            .disabled(generatedText.isEmpty || isPosting)
                         }
-                        .disabled(generatedText.isEmpty || isPosting)
-                        .accessibilityLabel("Post to \(platform.1)")
                     } else {
                         Button {
                             copyToClipboard()
@@ -119,16 +122,6 @@ struct PromotionTabView: View {
             }
         }
         .padding()
-        .confirmationDialog(
-            "Post to \(currentPlatform?.1 ?? "")?",
-            isPresented: $showingPostConfirmation,
-            titleVisibility: .visible
-        ) {
-            Button("Post") { postToAPI() }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("This will publish the text to your \(currentPlatform?.1 ?? "") account.")
-        }
         .alert("Posting Error", isPresented: .init(
             get: { errorMessage != nil },
             set: { if !$0 { errorMessage = nil } }
@@ -157,33 +150,13 @@ struct PromotionTabView: View {
         showStatus("Copied!")
     }
 
-    private func postToAPI() {
-        isPosting = true
-        Task {
-            guard let services = appServices else { return }
-            do {
-                let episodeURL = resolveEpisodeURL()
-                _ = try await services.socialPostingService.post(
-                    platformID: selectedPlatform,
-                    text: generatedText,
-                    episodeURL: episodeURL
-                )
-                showStatus("Posted ✓")
-            } catch {
-                errorMessage = error.localizedDescription
-            }
-            isPosting = false
-        }
-    }
-
-    private func resolveEpisodeURL() -> URL? {
-        // Use the published asset's remote URL if available
-        guard let services = appServices,
-              let publishedID = episode.publishedAssetID else { return nil }
-        let context = services.modelContainer.mainContext
-        let descriptor = FetchDescriptor<Asset>(predicate: #Predicate { $0.id == publishedID })
-        guard let asset = try? context.fetch(descriptor).first else { return nil }
-        return asset.remoteURL
+    private func encodeSocialPost(platformID: String) -> Data {
+        let payload: [String: String] = [
+            "episodeID": episode.id.uuidString,
+            "platformID": platformID,
+            "text": generatedText
+        ]
+        return (try? JSONEncoder().encode(payload)) ?? Data()
     }
 
     private func showStatus(_ message: String) {

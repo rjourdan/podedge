@@ -22,6 +22,7 @@ public final class AppServices {
     public let distributionService: DistributionService
     public let toolRegistry: ToolRegistry
     public let toolBroker: ToolBroker
+    public let auditLogService: AuditLogService
     public let audioPipeline: any AudioPipeline
     public let feedBuilder: FeedBuilder
     public let feedValidator: FeedValidator
@@ -86,7 +87,9 @@ public final class AppServices {
 
         let registry = ToolRegistry()
         self.toolRegistry = registry
-        self.toolBroker = ToolBroker(registry: registry)
+        let auditLog = AuditLogService(modelContext: modelContext)
+        self.auditLogService = auditLog
+        self.toolBroker = ToolBroker(registry: registry, auditLog: auditLog)
 
         let feed = FeedBuilder(resolveAsset: { _ in nil }, rewriteEnclosure: nil)
         self.feedBuilder = feed
@@ -188,6 +191,32 @@ public final class AppServices {
         await socialPostingService.register(CopyPasteTarget(platformID: "threads", displayName: "Threads"))
 
         bgTaskCoordinator.registerTasks()
+
+        // Register tools
+        await toolRegistry.register(ListShowsTool(store: libraryStore))
+        await toolRegistry.register(GetShowTool(store: libraryStore))
+        await toolRegistry.register(ListEpisodesTool(store: libraryStore))
+        await toolRegistry.register(GetEpisodeTool(store: libraryStore))
+        await toolRegistry.register(BuildPreviewTool(store: libraryStore, feedBuilder: feedBuilder, serializer: feedSerializer))
+        await toolRegistry.register(ValidateFeedTool(store: libraryStore, feedBuilder: feedBuilder, validator: feedValidator))
+        await toolRegistry.register(QueryCachedAnalyticsTool(store: libraryStore))
+        await toolRegistry.register(GetDistributionStatusTool(store: libraryStore))
+        await toolRegistry.register(CreateDraftTool(store: libraryStore))
+        await toolRegistry.register(UpdateMetadataTool(store: libraryStore))
+        await toolRegistry.register(TranscribeTool(store: libraryStore, scheduler: jobScheduler))
+        await toolRegistry.register(PublishTool(store: libraryStore, scheduler: jobScheduler))
+        await toolRegistry.register(UnpublishTool(store: libraryStore))
+        await toolRegistry.register(DeleteEpisodeTool(store: libraryStore))
+        await toolRegistry.register(CreateShowTool(store: libraryStore))
+        await toolRegistry.register(UpdateShowMetadataTool(store: libraryStore))
+        await toolRegistry.register(DeleteShowTool(store: libraryStore))
+        await toolRegistry.register(GenerateMetadataTool(store: libraryStore, scheduler: jobScheduler))
+        await toolRegistry.register(GenerateBlurbTool(store: libraryStore, renderer: .bluesky(llmService: llmService)))
+        await toolRegistry.register(TestBindingTool(store: libraryStore, hostService: hostService))
+        await toolRegistry.register(RemoveBindingTool(store: libraryStore))
+        await toolRegistry.register(SocialPostTool(socialService: socialPostingService))
+        await toolRegistry.register(ListJobsTool(store: libraryStore))
+
         jobScheduler.start()
     }
 

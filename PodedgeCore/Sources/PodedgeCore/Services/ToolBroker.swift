@@ -4,10 +4,16 @@ import Foundation
 /// confirmation for destructive operations.
 public actor ToolBroker {
     private let registry: ToolRegistry
+    private let auditLog: AuditLogService?
 
     /// Creates a broker backed by the given registry.
-    public init(registry: ToolRegistry) {
+    ///
+    /// - Parameters:
+    ///   - registry: The tool registry to look up tools.
+    ///   - auditLog: Optional audit log service for recording invocations.
+    public init(registry: ToolRegistry, auditLog: AuditLogService? = nil) {
         self.registry = registry
+        self.auditLog = auditLog
     }
 
     /// Returns tools the caller is permitted to invoke.
@@ -30,10 +36,23 @@ public actor ToolBroker {
         if tool.scope == .destructive {
             return .needsConfirmation(toolName: name, input: input)
         }
+        let start = ContinuousClock.now
         do {
             let output = try await tool.execute(input: input)
+            let duration = start.duration(to: .now)
+            await recordAudit(
+                caller: caller, tool: tool, input: input,
+                outputSummary: Self.truncate(output),
+                duration: duration, success: true
+            )
             return .success(output)
         } catch {
+            let duration = start.duration(to: .now)
+            await recordAudit(
+                caller: caller, tool: tool, input: input,
+                outputSummary: error.localizedDescription,
+                duration: duration, success: false
+            )
             return .failure(error.localizedDescription)
         }
     }
@@ -52,10 +71,23 @@ public actor ToolBroker {
         guard tool.scope == .destructive else {
             return .failure("Only destructive tools require confirmation")
         }
+        let start = ContinuousClock.now
         do {
             let output = try await tool.execute(input: input)
+            let duration = start.duration(to: .now)
+            await recordAudit(
+                caller: caller, tool: tool, input: input,
+                outputSummary: Self.truncate(output),
+                duration: duration, success: true
+            )
             return .success(output)
         } catch {
+            let duration = start.duration(to: .now)
+            await recordAudit(
+                caller: caller, tool: tool, input: input,
+                outputSummary: error.localizedDescription,
+                duration: duration, success: false
+            )
             return .failure(error.localizedDescription)
         }
     }
@@ -90,5 +122,40 @@ public actor ToolBroker {
             return nil
         }
         return tool
+    }
+
+    /// Records an audit entry via the MainActor-isolated audit log service.
+    private func recordAudit(
+        caller: any ToolCaller,
+        tool: any ToolDefinition,
+        input: Data,
+        outputSummary: String,
+        duration: Duration,
+        success: Bool
+    ) async {
+        guard let auditLog else { return }
+        let agentName = String(describing: caller)
+        let toolName = tool.name
+        let scope = tool.scope
+        let inputSummary = Self.truncate(input)
+        let durationSeconds = Double(duration.components.seconds)
+            + Double(duration.components.attoseconds) / 1e18
+        await MainActor.run {
+            auditLog.log(
+                agentName: agentName,
+                toolName: toolName,
+                scope: scope,
+                inputSummary: inputSummary,
+                outputSummary: outputSummary,
+                durationSeconds: durationSeconds,
+                success: success
+            )
+        }
+    }
+
+    /// Returns the first 200 characters of the UTF-8 representation of `data`.
+    nonisolated private static func truncate(_ data: Data) -> String {
+        let str = String(decoding: data, as: UTF8.self)
+        return str.count <= 200 ? str : String(str.prefix(200))
     }
 }

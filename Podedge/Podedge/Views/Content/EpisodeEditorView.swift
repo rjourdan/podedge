@@ -488,8 +488,6 @@ private struct PublishTab: View {
     @State private var publishPlan: PublishPlan?
     @State private var dryRunError: String?
     @State private var scheduleError: String?
-    @State private var showingPublishConfirmation = false
-    @State private var showingUnpublishConfirmation = false
 
     private var canPublish: Bool {
         episode.status == .ready || episode.status == .scheduled
@@ -530,23 +528,29 @@ private struct PublishTab: View {
                     .disabled(!canPublish)
                     .accessibilityLabel("Preview publish without uploading")
 
-                    // Task 10.1 — Publish
-                    Button {
-                        publishWithConfirmation()
-                    } label: {
-                        Label("Publish Now", systemImage: "arrow.up.circle.fill")
+                    // Task 10.1 — Publish via ToolBroker
+                    if let services = appServices {
+                        ToolButton(
+                            title: "Publish Now",
+                            toolName: "episode.publish",
+                            input: { encodeID(episode.id) },
+                            broker: services.toolBroker,
+                            caller: AppCaller(),
+                            systemImage: "arrow.up.circle.fill"
+                        )
+                        .disabled(!canPublish || episode.status == .processing)
                     }
-                    .disabled(!canPublish || episode.status == .processing)
-                    .accessibilityLabel("Publish episode")
 
-                    // Task 10.3 — Unpublish
-                    if episode.status == .published {
-                        Button(role: .destructive) {
-                            unpublishWithConfirmation()
-                        } label: {
-                            Label("Unpublish", systemImage: "arrow.down.circle")
-                        }
-                        .accessibilityLabel("Unpublish episode")
+                    // Task 10.3 — Unpublish via ToolBroker
+                    if episode.status == .published, let services = appServices {
+                        ToolButton(
+                            title: "Unpublish",
+                            toolName: "episode.unpublish",
+                            input: { encodeID(episode.id) },
+                            broker: services.toolBroker,
+                            caller: AppCaller(),
+                            systemImage: "arrow.down.circle"
+                        )
                     }
                 }
 
@@ -562,26 +566,6 @@ private struct PublishTab: View {
         }
         .sheet(isPresented: $showingDryRun) {
             dryRunSheet
-        }
-        .confirmationDialog(
-            "Publish this episode?",
-            isPresented: $showingPublishConfirmation,
-            titleVisibility: .visible
-        ) {
-            Button("Publish") { performPublish() }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("This will upload audio and update your RSS feed.")
-        }
-        .confirmationDialog(
-            "Unpublish this episode?",
-            isPresented: $showingUnpublishConfirmation,
-            titleVisibility: .visible
-        ) {
-            Button("Unpublish", role: .destructive) { performUnpublish() }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("It will be removed from your RSS feed.")
         }
     }
 
@@ -631,20 +615,9 @@ private struct PublishTab: View {
 
     // MARK: - Publish (Task 10.1)
 
-    private func publishWithConfirmation() {
-        showingPublishConfirmation = true
-    }
-
-    private func performPublish() {
-        guard let services = appServices else { return }
-        episode.status = .processing
-        let job = Job(kind: .publish, targetID: episode.id)
-        do {
-            try services.jobScheduler.enqueue(job)
-            try modelContext.save()
-        } catch {
-            publishError = error.localizedDescription
-        }
+    /// Encodes an episode ID as JSON data for tool invocation.
+    private func encodeID(_ id: UUID) -> Data {
+        (try? JSONEncoder().encode(["episodeID": id.uuidString])) ?? Data()
     }
 
     // MARK: - Dry Run (Task 10.2)
@@ -739,19 +712,6 @@ private struct PublishTab: View {
         .frame(minWidth: 400, minHeight: 300)
     }
 
-    // MARK: - Unpublish (Task 10.3)
-
-    private func unpublishWithConfirmation() {
-        showingUnpublishConfirmation = true
-    }
-
-    private func performUnpublish() {
-        episode.status = .draft
-        episode.pubDate = nil
-        // TODO: Call publishService.regenerateFeed(for:excluding:) when available.
-        // Feed regeneration will be handled when the next episode is published.
-        try? modelContext.save()
-    }
 }
 
 /// Default app-level tool caller with full capability tier.

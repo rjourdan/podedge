@@ -1,7 +1,7 @@
 import Foundation
 
 /// A `Sendable` value-type snapshot of a ``Show`` for use across isolation boundaries.
-public struct ShowSnapshot: Sendable {
+public struct ShowSnapshot: Sendable, Codable {
     public var id: UUID
     public var title: String
     public var author: String
@@ -87,7 +87,7 @@ extension Show {
 }
 
 /// A `Sendable` value-type snapshot of an ``Episode`` for use across isolation boundaries.
-public struct EpisodeSnapshot: Sendable {
+public struct EpisodeSnapshot: Sendable, Codable {
     public var id: UUID
     public var title: String
     public var subtitle: String?
@@ -199,7 +199,7 @@ extension Episode {
 }
 
 /// A `Sendable` value-type snapshot of a ``HostBinding`` for use across isolation boundaries.
-public struct HostBindingSnapshot: Sendable {
+public struct HostBindingSnapshot: Sendable, Codable {
     public var id: UUID
     public var kind: HostKind
     public var displayName: String

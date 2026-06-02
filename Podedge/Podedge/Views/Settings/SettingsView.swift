@@ -20,10 +20,12 @@ struct SettingsView: View {
                 .tabItem { Label("Distribution", systemImage: "globe") }
             SocialSettingsTab()
                 .tabItem { Label("Social", systemImage: "bubble.left.and.bubble.right") }
+            AuditLogView()
+                .tabItem { Label("Audit Log", systemImage: "list.clipboard") }
             AboutSettingsTab()
                 .tabItem { Label("About", systemImage: "info.circle") }
         }
-        .frame(width: 520, height: 400)
+        .frame(width: 600, height: 420)
     }
 }
 

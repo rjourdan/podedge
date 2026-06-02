@@ -1,6 +1,6 @@
 # Podedge v1 Implementation Tracker — Spec-organized
 
-Last updated: 2026-05-29
+Last updated: 2026-06-01
 
 ## Pre-v1 (Historic)
 
@@ -168,18 +168,18 @@ Work streams WS1–WS8 produced a compilable app shell with fully unit-tested Po
 
 [requirements.md](.kiro/specs/08-tool-registry-wiring/requirements.md) · [design.md](.kiro/specs/08-tool-registry-wiring/design.md)
 
-**Status:** ⬜ Not started  
+**Status:** ✅ Complete  
 **Dependencies:** Spec 01, Spec 06, Spec 07
 
 | ID | Task | File(s) | Status |
 |----|------|---------|--------|
-| 08.1 | Create `ToolPayloads.swift` with all input/output types | `PodedgeCore/Sources/PodedgeCore/Services/ToolPayloads.swift` | ⬜ |
-| 08.2 | Create tool implementation files (LibraryTools, FeedTools, EpisodeTools, etc.) | `PodedgeCore/Sources/PodedgeCore/Tools/*.swift` | ⬜ |
-| 08.3 | Add `AuditLogService` dependency to `ToolBroker`; write audit entries on every invocation | `PodedgeCore/Sources/PodedgeCore/Services/ToolBroker.swift` | ⬜ |
-| 08.4 | Register all 23 tools in `AppServices.bootstrap()` | `Podedge/Podedge/AppServices.swift` | ⬜ |
-| 08.5 | Replace direct service calls with `ToolButton` in `EpisodeEditorView`, `ShowListView`, `EpisodeListView`, `PromotionTabView` | Multiple view files | ⬜ |
-| 08.6 | Create `AuditLogView` and add to `SettingsView` | `Podedge/Podedge/Views/Settings/AuditLogView.swift` | ⬜ |
-| 08.7 | Write `ToolRegistryWiringTests` (all tools registered, destructive audit, duplicate replacement) | `PodedgeCoreTests/ToolRegistryWiringTests.swift` | ⬜ |
+| 08.1 | Create `ToolPayloads.swift` with all input/output types | `PodedgeCore/Sources/PodedgeCore/Services/ToolPayloads.swift` | ✅ |
+| 08.2 | Create tool implementation files (LibraryTools, FeedTools, EpisodeTools, etc.) | `PodedgeCore/Sources/PodedgeCore/Tools/*.swift` | ✅ |
+| 08.3 | Add `AuditLogService` dependency to `ToolBroker`; write audit entries on every invocation | `PodedgeCore/Sources/PodedgeCore/Services/ToolBroker.swift` | ✅ |
+| 08.4 | Register all 23 tools in `AppServices.bootstrap()` | `Podedge/Podedge/AppServices.swift` | ✅ |
+| 08.5 | Replace direct service calls with `ToolButton` in `EpisodeEditorView`, `ShowListView`, `EpisodeListView`, `PromotionTabView` | Multiple view files | ✅ |
+| 08.6 | Create `AuditLogView` and add to `SettingsView` | `Podedge/Podedge/Views/Settings/AuditLogView.swift` | ✅ |
+| 08.7 | Write `ToolRegistryWiringTests` (all tools registered, destructive audit, duplicate replacement) | `PodedgeCoreTests/ToolRegistryWiringTests.swift` | ✅ |
 
 
 ### Spec 09 — Assistant Core

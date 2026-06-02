@@ -50,9 +50,17 @@ struct EpisodeListView: View {
         .border(isDropTargeted ? Color.accentColor : Color.clear, width: 2)
         .alert("Delete Episode?", isPresented: $showingDeleteConfirmation) {
             Button("Delete", role: .destructive) {
-                if let offsets = pendingDeleteOffsets {
+                if let offsets = pendingDeleteOffsets, let services = appServices {
                     for index in offsets {
-                        modelContext.delete(episodes[index])
+                        let episodeID = episodes[index].id
+                        let input = (try? JSONEncoder().encode(["episodeID": episodeID.uuidString])) ?? Data()
+                        Task {
+                            _ = await services.toolBroker.invokeConfirmed(
+                                toolNamed: "episode.delete",
+                                input: input,
+                                caller: AppCaller()
+                            )
+                        }
                     }
                 }
                 pendingDeleteOffsets = nil
