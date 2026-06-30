@@ -37,6 +37,8 @@ public final class AppServices {
     public let metadataGenerationService: MetadataGenerationService
     public let bgTaskCoordinator: BGTaskCoordinator
     public let socialPostingService: SocialPostingService
+    public let router: Router
+    public let assistantController: AssistantController
     let confirmationCoordinator: ConfirmationCoordinator
 
     // MARK: - State
@@ -89,7 +91,21 @@ public final class AppServices {
         self.toolRegistry = registry
         let auditLog = AuditLogService(modelContext: modelContext)
         self.auditLogService = auditLog
-        self.toolBroker = ToolBroker(registry: registry, auditLog: auditLog)
+        let broker = ToolBroker(registry: registry, auditLog: auditLog)
+        self.toolBroker = broker
+
+        let router = Router(llmProvider: llmProvider)
+        self.router = router
+
+        let caps = llmProvider.capabilities
+        let label = "\(caps.modelID) · \(caps.providerID.uppercased())"
+        self.assistantController = AssistantController(
+            router: router,
+            toolBroker: broker,
+            auditLog: auditLog,
+            llmProvider: llmProvider,
+            providerLabel: label
+        )
 
         let feed = FeedBuilder(resolveAsset: { _ in nil }, rewriteEnclosure: nil)
         self.feedBuilder = feed
@@ -251,6 +267,9 @@ private struct PlaceholderAnalyticsProvider: AnalyticsProvider {
 }
 
 private struct DisabledLLMProvider: LLMProvider {
+    var capabilities: LLMProviderCapabilities {
+        LLMProviderCapabilities(supportsNativeToolUse: false, supportsStreaming: false, maxContextTokens: 0, modelID: "none", providerID: "disabled")
+    }
     func complete(prompt: String, systemPrompt: String?, maxTokens: Int) async throws -> LLMResponse {
         throw PodedgeError.llmFailed(reason: "No AI provider configured. Complete onboarding or visit Settings → LLM Providers.")
     }
@@ -259,6 +278,12 @@ private struct DisabledLLMProvider: LLMProvider {
     }
     func complete(prompt: String, systemPrompt: String?, maxTokens: Int, schema: String) async throws -> LLMResponse {
         throw PodedgeError.llmFailed(reason: "No AI provider configured. Complete onboarding or visit Settings → LLM Providers.")
+    }
+    func complete(_ prompt: String, systemPrompt: String?, maxTokens: Int, tools: [any ToolDefinition]?) async throws -> LLMResponse {
+        throw PodedgeError.llmFailed(reason: "No AI provider configured.")
+    }
+    func stream(_ prompt: String, systemPrompt: String?, maxTokens: Int, tools: [any ToolDefinition]?) -> AsyncThrowingStream<LLMStreamEvent, Error> {
+        AsyncThrowingStream { $0.finish(throwing: PodedgeError.llmFailed(reason: "No AI provider configured.")) }
     }
 }
 

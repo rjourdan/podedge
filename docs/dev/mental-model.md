@@ -5,6 +5,7 @@
 
 <!--
 Changelog
+- 2026-06-02: Added Assistant Core section — Spec 09 complete. LLMProvider extended with capabilities + tool-use. AssistantController, Router, EscapeHatchResponder, AssistantPaneView, ⌘K shortcut now live.
 - 2026-05-09: Added Composition Root (AppServices) section — Spec 01 complete.
 - 2026-05-05: v1 LLM stack clarified — MLX + Ollama, no cloud. See ADR 0002.
 - 2026-05-05: Codified the split data-access model (reads direct via @Query, writes via ToolBroker). See ADR 0001.
@@ -40,6 +41,30 @@ Key files:
 
 See [spec01-composition-root.md](../../.kiro/learnings/spec01-composition-root.md) for implementation decisions.
 
+## Assistant Core
+
+The in-app assistant exposes every registered tool to a conversational interface. It is an additive modality — the traditional UI and all existing tools are unchanged.
+
+**Key components (all in `PodedgeCore` except the view):**
+
+- **`AssistantController`** (`@MainActor @Observable`) — owns a single conversation's lifecycle. Accepts a user utterance, calls `Router`, dispatches to the LLM loop, calls `ToolBroker` for any tool invocations, streams the response. Enforces per-session rate limits: 60 tool calls/minute, 10 destructive tool calls/hour (configurable in Settings).
+- **`Router`** — deterministic first pass (keyword rules for `/promote`, `/analyze`, `/debug`, etc.), with a one-shot LLM classifier fallback when no keyword matches. Never invokes tools; only picks which agent/path handles the request.
+- **`EscapeHatchResponder`** — composes failure responses when the LLM cannot complete a request. Always includes a deep-link to the manual UI path and a link to Settings → LLM Providers.
+- **`AssistantMessage` / `ToolCallRecord`** — value types for the conversation transcript. `ToolCallRecord` records every tool the LLM called along with the outcome, shown inline in the pane.
+- **`AssistantPaneView`** (app target) — docked on the right side of `MainWindowView`. Opened/focused by ⌘K from anywhere. Hides/shows with preference persisted across launches. Each ⌘K invocation starts a fresh conversation. Every assistant message shows the provider + model label.
+
+**`LLMProvider` protocol extensions (Spec 09):**
+
+The protocol gained tool-use support that providers must implement:
+- `capabilities: LLMProviderCapabilities` — declares `supportsNativeToolUse`, `supportsStreaming`, `supportsJSONSchemaOutput`, `maxContextTokens`.
+- `complete(_:schema:tools:)` — accepts an optional `[ToolDefinition]` array alongside the existing schema hint.
+- `stream(_:tools:) -> AsyncThrowingStream<LLMStreamEvent, Error>` — streaming variant; emits `.textDelta`, `.toolCall`, and `.done` events.
+- `MLXLLMProvider` uses prompt-emulated tool use (`supportsNativeToolUse: false`); `OllamaLLMProvider` uses native tool use when the model supports it, with prompt-emulated fallback.
+
+The assistant path through the system: `AssistantPaneView` → `AssistantController` → `Router` → LLM loop → `ToolBroker.execute(…, caller: .agent(…))` → same service handlers as UI buttons.
+
+See [spec09-assistant-core.md](../../.kiro/learnings/spec09-assistant-core.md) for implementation decisions.
+
 ## The picture
 
 ```mermaid
@@ -47,6 +72,7 @@ flowchart TB
     subgraph UI["UI Layer (Podedge/ — Podedge.xcodeproj)"]
         Views["SwiftUI Views<br/>MainWindow, EpisodeEditor, ..."]
         Confirm["ConfirmationCoordinator<br/>(presents confirmation sheet)"]
+        AssistantPane["AssistantPaneView<br/>(⌘K — docked right of MainWindow)"]
     end
     subgraph Services["Service Layer (PodedgeCore)"]
         Broker["ToolBroker / ToolRegistry<br/>(entry point for all actions)"]
@@ -60,16 +86,25 @@ flowchart TB
         Dist["DistributionService"]
         Anal["AnalyticsService"]
         Publish["PublishService<br/>PublishArtifactBuilder<br/>PublishDryRun"]
+        subgraph Assistant["Assistant Core (PodedgeCore)"]
+            AC["AssistantController<br/>(@MainActor @Observable)<br/>rate limits: 60/min, 10 destructive/hr"]
+            Router["Router<br/>(keyword rules → LLM classifier)"]
+            Escape["EscapeHatchResponder"]
+        end
     end
     subgraph Ext["Pluggable Extensions (PodedgeCore)"]
         Hosts["PodcastHost<br/>(S3Host)"]
         Targets["DistributionTarget<br/>(Apple/Spotify/Amazon/Index/Podping)"]
-        LLMs["LLMProvider<br/>(MLX in-process + Ollama local)"]
+        LLMs["LLMProvider<br/>(MLX + Ollama)<br/>capabilities · complete(tools:) · stream(tools:)<br/>LLMStreamEvent · LLMToolCall"]
         Engines["TranscriptionEngine<br/>(WhisperKit, whisper.cpp)"]
     end
     Models["SwiftData Models<br/>Show, Episode, Asset, Job, HostBinding, ..."]
 
     Views --> Broker
+    AssistantPane --> AC
+    AC --> Router
+    AC --> Escape
+    AC --> Broker
     Broker -. ".needsConfirmation signal" .-> Confirm
     Confirm --> Broker
     Broker --> Audit
@@ -79,7 +114,7 @@ flowchart TB
     Ext -.->|HTTPS| World["S3, OP3, Podcast Index, Podping, directories"]
 ```
 
-*Shows the enforced dependency direction: the UI depends on the Service Layer, which depends on Models and Extensions. `ConfirmationCoordinator` lives in the app target (it presents SwiftUI) and is driven by a data signal from `ToolBroker` — this keeps `PodedgeCore` free of SwiftUI.*
+*Shows the enforced dependency direction: the UI depends on the Service Layer, which depends on Models and Extensions. `ConfirmationCoordinator` lives in the app target (it presents SwiftUI) and is driven by a data signal from `ToolBroker` — this keeps `PodedgeCore` free of SwiftUI. `AssistantController` lives in `PodedgeCore`; `AssistantPaneView` lives in the app target and is the only UI surface for the Assistant.*
 
 ## Canonical flow: publishing an episode
 

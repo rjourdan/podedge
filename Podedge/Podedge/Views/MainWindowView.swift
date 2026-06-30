@@ -13,23 +13,60 @@ struct MainWindowView: View {
     @State private var sidebarTab: SidebarTab = .shows
     @State private var selectedShowID: PersistentIdentifier?
     @State private var selectedEpisodeID: PersistentIdentifier?
-    @State private var chatText = ""
-    @FocusState private var chatFocused: Bool
+    @AppStorage("assistantPaneVisible") private var paneVisible = true
     @Environment(\.openSettings) private var openSettings
+    @Environment(\.appServices) private var appServices
 
     var body: some View {
         NavigationSplitView {
             sidebar
         } detail: {
-            VStack(spacing: 0) {
+            HStack(spacing: 0) {
                 detailContent
-                Divider()
-                chatBar
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                if paneVisible {
+                    Divider()
+                    VStack(spacing: 0) {
+                        HStack {
+                            Text("Assistant")
+                                .font(.headline)
+                            Spacer()
+                            Button {
+                                paneVisible = false
+                            } label: {
+                                Image(systemName: "xmark")
+                                    .font(.caption)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Hide assistant pane")
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        Divider()
+                        AssistantPaneView()
+                    }
+                    .frame(width: 320)
+                }
             }
         }
         .navigationSplitViewColumnWidth(min: 220, ideal: 260, max: 340)
         .frame(minWidth: 800, minHeight: 500)
-        .keyboardShortcut("k", modifiers: .command)
+        .toolbar {
+            ToolbarItem(placement: .automatic) {
+                Button {
+                    paneVisible.toggle()
+                } label: {
+                    Image(systemName: "bubble.left.and.text.bubble.right")
+                }
+                .accessibilityLabel("Toggle assistant pane")
+            }
+        }
+        .background {
+            Button("") { activateAssistant() }
+                .keyboardShortcut("k", modifiers: .command)
+                .hidden()
+        }
     }
 
     // MARK: - Sidebar
@@ -80,20 +117,14 @@ struct MainWindowView: View {
         }
     }
 
-    // MARK: - Chat Bar (Placeholder for WS9)
+    // MARK: - Assistant Activation
 
-    private var chatBar: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "bubble.left")
-                .foregroundStyle(.secondary)
-            TextField("Ask Podedge… (⌘K)", text: $chatText)
-                .textFieldStyle(.plain)
-                .focused($chatFocused)
-                .onSubmit { /* WS9: send to agent */ }
-                .accessibilityLabel("Chat input")
+    private func activateAssistant() {
+        if paneVisible {
+            // Already visible — start fresh conversation per spec
+            appServices?.assistantController.reset()
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(.bar)
+        paneVisible = true
+        NotificationCenter.default.post(name: .focusAssistantInput, object: nil)
     }
 }

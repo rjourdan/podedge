@@ -329,6 +329,8 @@ private struct ModelsSettingsTab: View {
 private struct LLMProvidersSettingsTab: View {
     @AppStorage("llm.provider.activeID") private var activeID = ""
     @AppStorage("llm.provider.modelID") private var modelID = ""
+    @AppStorage("assistant.maxToolCallsPerMinute") private var toolCallsPerMinute = 60
+    @AppStorage("assistant.maxDestructivePerHour") private var destructivePerHour = 10
     @State private var ollamaModels: [OllamaModelInfo] = []
     @State private var connectionStatus: String?
     @State private var isTesting = false
@@ -336,6 +338,10 @@ private struct LLMProvidersSettingsTab: View {
 
     var body: some View {
         Form {
+            Section("Assistant") {
+                Stepper("Tool calls/minute: \(toolCallsPerMinute)", value: $toolCallsPerMinute, in: 10...120, step: 10)
+                Stepper("Destructive calls/hour: \(destructivePerHour)", value: $destructivePerHour, in: 1...20)
+            }
             Section("Active Provider") {
                 LabeledContent("Provider") {
                     Text(activeID.isEmpty ? "Not configured" : activeID.uppercased())

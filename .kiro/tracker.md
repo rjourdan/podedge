@@ -1,6 +1,6 @@
 # Podedge v1 Implementation Tracker — Spec-organized
 
-Last updated: 2026-06-01
+Last updated: 2026-06-02
 
 ## Pre-v1 (Historic)
 
@@ -186,23 +186,23 @@ Work streams WS1–WS8 produced a compilable app shell with fully unit-tested Po
 
 [requirements.md](.kiro/specs/09-assistant-core/requirements.md) · [design.md](.kiro/specs/09-assistant-core/design.md)
 
-**Status:** ⬜ Not started  
+**Status:** ✅ Complete  
 **Dependencies:** Spec 08
 
 | ID | Task | File(s) | Status |
 |----|------|---------|--------|
-| 09.1 | Extend `LLMProvider` protocol with `capabilities`, `complete(tools:)`, `stream(tools:)`, `LLMStreamEvent` | `PodedgeCore/Sources/PodedgeCore/Services/LLMProvider.swift` | ⬜ |
-| 09.2 | Update `MLXLLMProvider` to implement extended protocol (prompt-emulated tool use) | `PodedgeCore/Sources/PodedgeCore/LLM/MLXLLMProvider.swift` | ⬜ |
-| 09.3 | Update `OllamaLLMProvider` to implement extended protocol (native tool-use + prompt-emulated fallback) | `PodedgeCore/Sources/PodedgeCore/LLM/OllamaLLMProvider.swift` | ⬜ |
-| 09.4 | Create `AssistantController` (`@MainActor @Observable`) with rate-limit enforcement | `PodedgeCore/Sources/PodedgeCore/Services/AssistantController.swift` | ⬜ |
-| 09.5 | Create `AssistantMessage` and `ToolCallRecord` value types | `PodedgeCore/Sources/PodedgeCore/Services/AssistantMessage.swift` | ⬜ |
-| 09.6 | Create `Router` (keyword rules + LLM classifier fallback) | `PodedgeCore/Sources/PodedgeCore/Services/Router.swift` | ⬜ |
-| 09.7 | Create `EscapeHatchResponder` | `PodedgeCore/Sources/PodedgeCore/Services/EscapeHatchResponder.swift` | ⬜ |
-| 09.8 | Create `AssistantPaneView` with conversation list, input, tool-call rows, provider label | `Podedge/Podedge/Views/Assistant/AssistantPaneView.swift` | ⬜ |
-| 09.9 | Add ⌘K shortcut and pane visibility preference to `MainWindowView` | `Podedge/Podedge/Views/MainWindowView.swift` | ⬜ |
-| 09.10 | Add Assistant-specific settings to LLM Providers tab (per-session rate limits UI) | `Podedge/Podedge/Views/Settings/SettingsView.swift` | ⬜ |
-| 09.11 | Wire `AssistantController` and `Router` into `AppServices` | `Podedge/Podedge/AppServices.swift` | ⬜ |
-| 09.12 | Write `RouterTests` and `AssistantControllerTests` | `PodedgeCoreTests/RouterTests.swift`, `AssistantControllerTests.swift` | ⬜ |
+| 09.1 | Extend `LLMProvider` protocol with `capabilities`, `complete(tools:)`, `stream(tools:)`, `LLMStreamEvent` | `PodedgeCore/Sources/PodedgeCore/Services/LLMProvider.swift` | ✅ |
+| 09.2 | Update `MLXLLMProvider` to implement extended protocol (prompt-emulated tool use) | `PodedgeCore/Sources/PodedgeCore/LLM/MLXLLMProvider.swift` | ✅ |
+| 09.3 | Update `OllamaLLMProvider` to implement extended protocol (native tool-use + prompt-emulated fallback) | `PodedgeCore/Sources/PodedgeCore/LLM/OllamaLLMProvider.swift` | ✅ |
+| 09.4 | Create `AssistantController` (`@MainActor @Observable`) with rate-limit enforcement | `PodedgeCore/Sources/PodedgeCore/Services/AssistantController.swift` | ✅ |
+| 09.5 | Create `AssistantMessage` and `ToolCallRecord` value types | `PodedgeCore/Sources/PodedgeCore/Services/AssistantMessage.swift` | ✅ |
+| 09.6 | Create `Router` (keyword rules + LLM classifier fallback) | `PodedgeCore/Sources/PodedgeCore/Services/Router.swift` | ✅ |
+| 09.7 | Create `EscapeHatchResponder` | `PodedgeCore/Sources/PodedgeCore/Services/EscapeHatchResponder.swift` | ✅ |
+| 09.8 | Create `AssistantPaneView` with conversation list, input, tool-call rows, provider label | `Podedge/Podedge/Views/Assistant/AssistantPaneView.swift` | ✅ |
+| 09.9 | Add ⌘K shortcut and pane visibility preference to `MainWindowView` | `Podedge/Podedge/Views/MainWindowView.swift` | ✅ |
+| 09.10 | Add Assistant-specific settings to LLM Providers tab (per-session rate limits UI) | `Podedge/Podedge/Views/Settings/SettingsView.swift` | ✅ |
+| 09.11 | Wire `AssistantController` and `Router` into `AppServices` | `Podedge/Podedge/AppServices.swift` | ✅ |
+| 09.12 | Write `RouterTests` and `AssistantControllerTests` | `PodedgeCoreTests/RouterTests.swift`, `AssistantControllerTests.swift` | ✅ |
 
 ---
 
